@@ -72,7 +72,7 @@ class RFID
     void setRegion(uint8_t region);
     void setAntennaPort();
     void setAntennaSearchList();
-	void setTagProtocol(uint16_t protocol = 0x05);
+	void setTagProtocol(uint8_t protocol = 0x05);
 
     void startReading(void); //Disable filtering and start reading continuously
     void stopReading(void); //Stops continuous read. Give 1000 to 2000ms for the module to stop reading.
@@ -95,7 +95,8 @@ class RFID
     
     bool check(void);
 
-    void writeID(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    void readTagEPC(uint16_t timeOut = COMMAND_TIME_OUT);
+    void writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
 
     void writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
     void readUserData(uint8_t *epc, uint16_t epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
@@ -104,6 +105,8 @@ class RFID
 
     void sendMessage(uint8_t opcode, uint8_t *data = 0, uint8_t size = 0, boolean waitForResponse = true);
     void sendCommand(boolean waitForResponse = true);
+
+    void printResponse(void);
 
     uint16_t calculateCRC(uint8_t *u8Buf, uint8_t len);
 

@@ -70,6 +70,22 @@ void RFID::setBaud(long baudRate)
   sendMessage(TMR_SR_OPCODE_SET_BAUD_RATE, data, size, false);
 }
 
+//Print the current message array - good for debugging, looking at how the module responded
+//TODO Don't hardcode the serial stream
+void RFID::printResponse(void)
+{
+  Serial.print("Response: ");
+  for (uint8_t x = 0 ; x < msg[1] + 7 ; x++)
+  {
+    Serial.print(" [");
+    if (msg[x] < 0x10) Serial.print("0");
+    Serial.print(msg[x], HEX);
+    Serial.print("]");
+  }
+  Serial.println();
+}
+
+
 //Begin scanning for tags
 //There are many many options and features to the nano, this sets options
 //for continuous read of GEN2 type tags
@@ -82,6 +98,16 @@ void RFID::startReading()
   //A lot of it has been deciphered but it's easier and faster just to pass a blob than to
   //assemble every option and sub-opcode.
   uint8_t configBlob[] = {0x00, 0x00, 0x01, 0x22, 0x00, 0x00, 0x05, 0x07, 0x22, 0x10, 0x00, 0x1B, 0x03, 0xE8, 0x01, 0xFF};
+
+    /*
+    //Timeout should be zero for true continuous reading
+    SETU16(newMsg, i, 0);
+    SETU8(newMsg, i, (uint8_t)0x1); // TM Option 1, for continuous reading
+    SETU8(newMsg, i, (uint8_t)TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE); // sub command opcode
+    SETU16(newMsg, i, (uint16_t)0x0000); // search flags, only 0x0001 is supported
+    SETU8(newMsg, i, (uint8_t)TMR_TAG_PROTOCOL_GEN2); // protocol ID
+    */
+
 
   sendMessage(TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP, configBlob, sizeof(configBlob));
 }
@@ -108,13 +134,7 @@ void RFID::stopReading()
 //0xFF = OPEN
 void RFID::setRegion(uint8_t region)
 {
-  //Copy this setting into a temp data array
-  uint8_t size = sizeof(region);
-  uint8_t data[size];
-  for (uint8_t x = 0 ; x < size ; x++)
-    data[x] = (uint8_t)(region >> (8 * (size - 1 - x)));
-
-  sendMessage(TMR_SR_OPCODE_SET_REGION, data, size);
+  sendMessage(TMR_SR_OPCODE_SET_REGION, &region, sizeof(region));
 }
 
 //Sets the TX and RX antenna ports to 01
@@ -143,18 +163,18 @@ void RFID::setAntennaSearchList(void)
 //TMR_TAG_PROTOCOL_IPX64             = 0x07
 //TMR_TAG_PROTOCOL_IPX256            = 0x08
 //TMR_TAG_PROTOCOL_ATA               = 0x1D
-void RFID::setTagProtocol(uint16_t protocol)
+void RFID::setTagProtocol(uint8_t protocol)
 {
   uint8_t data[2]; 
-  data[0] = protocol >> 8 & 0xFF; //Opcode expects 16-bits
-  data[1] = protocol & 0xFF;
+  data[0] = 0; //Opcode expects 16-bits
+  data[1] = protocol;
 
   sendMessage(TMR_SR_OPCODE_SET_TAG_PROTOCOL, data, sizeof(data));
 }
 
 //This writes a new EPC to the first tag it detects
 //Use with caution. This function doesn't control which tag hears the command.
-void RFID::writeID(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
+void RFID::writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
 {
   //FF  06  23  03  E8  00  00  AA  BB  62  4E - Write AA BB to tag
   //FF  0A  23  03  E8  00  00  AA  BB  CC  DD  EE  FF  F2  7E - Write AA BB CC DD EE FF to tag
@@ -165,7 +185,7 @@ void RFID::writeID(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
 
   uint8_t data[4 + newIDLength];
 
-  //Pre-load array with magicBlob
+  //Pre-load array with options
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
   data[1] = timeOut & 0xFF; //Timeout lsB in ms
   data[2] = 0x00; //RFU
@@ -177,6 +197,18 @@ void RFID::writeID(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
 
   sendMessage(TMR_SR_OPCODE_WRITE_TAG_ID, data, sizeof(data));
 }
+
+//Read a single EPC
+void RFID::readTagEPC(uint16_t timeOut)
+{
+  uint8_t data[3];
+  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[1] = timeOut & 0xFF; //Timeout lsB in ms
+  data[2] = 0x00; //Init option byte
+
+  sendMessage(TMR_SR_OPCODE_READ_TAG_ID_SINGLE, data, sizeof(data));
+}
+
 
 //This writes data to the tag. 64 bytes are normally available.
 //Writes to the first spot 0x00 and fills up as much of the 64 bytes as user provides
@@ -369,7 +401,7 @@ void RFID::getVersion(void)
 
 //Set the read TX power
 //Power is as follows: maximum power is 2700 = 27.00 dBm
-//1050 = 10.5dBm
+//1005 = 10.05dBm
 void RFID::setReadPower(int16_t powerSetting)
 {
   if(powerSetting > 2700) powerSetting = 2700; //Limit to 27dBm
@@ -595,8 +627,8 @@ uint8_t RFID::parseResponse(void)
   }
   else
   {
-    Serial.print("Unknown opcode: ");
-    Serial.print(opCode);
+    Serial.print("Unknown opcode in response: 0x");
+    Serial.println(opCode, HEX);
     return (ERROR_UNKNOWN_OPCODE);
   }
 

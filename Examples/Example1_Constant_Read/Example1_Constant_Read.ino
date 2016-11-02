@@ -6,9 +6,9 @@
 
   Constantly reads and outputs any tags heard
 
-  If using the Simultaneous RFID Tag Reader (SRTR) shield, make sure the serial slide 
+  If using the Simultaneous RFID Tag Reader (SRTR) shield, make sure the serial slide
   switch is in the 'SW-UART' position
-  
+
   Arduino pin 2 to Nano TX
   Arduino pin 3 to Nano RX
 */
@@ -23,10 +23,7 @@ RFID nano; //Create instance
 void setup()
 {
   Serial.begin(115200);
-
-  while (!Serial);
-  Serial.println();
-  Serial.println(F("Initializing..."));
+  while (!Serial); //Wait for the serial port to come online
 
   if (setupNano(57600) == false) //Configure nano to run at 57600bps
   {
@@ -36,7 +33,8 @@ void setup()
 
   nano.setRegion(0x0D); //Set to North America
 
-  nano.setReadPower(1000); //10.00 dBm. Max Read TX Power is 27.00 dBm
+  nano.setReadPower(1000); //10.00 dBm.
+  //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
   nano.startReading(); //Begin scanning for tags
 
@@ -83,7 +81,7 @@ void loop()
         for (byte x = 0 ; x < tagDataBytes ; x++)
         {
           if (nano.msg[26 + x] < 0x10) Serial.print(F("0"));
-          Serial.print(nano.msg[26 + x]);
+          Serial.print(nano.msg[26 + x], HEX);
           Serial.print(F(" "));
         }
         Serial.print(F("]"));
@@ -94,18 +92,23 @@ void loop()
       for (byte x = 0 ; x < tagEPCBytes ; x++)
       {
         if (nano.msg[31 + tagDataBytes + x] < 0x10) Serial.print(F("0"));
-        Serial.print(nano.msg[31 + tagDataBytes + x]);
+        Serial.print(nano.msg[31 + tagDataBytes + x], HEX);
         Serial.print(F(" "));
       }
       Serial.print(F("]"));
 
       Serial.println();
     }
+    else
+    {
+      //Unknown response
+      nano.printResponse(); //Print the response message. Look up errors in tmr__status_8h.html
+    }
   }
 }
 
-//Because Stream does not have a .begin() we have to do this outside the library
 //Gracefully handles a reader that is already configured and already reading continuously
+//Because Stream does not have a .begin() we have to do this outside the library
 boolean setupNano(long baudRate)
 {
   //Test to see if we are already connected to a module

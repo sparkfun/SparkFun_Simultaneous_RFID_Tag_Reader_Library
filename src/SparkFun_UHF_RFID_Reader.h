@@ -52,7 +52,8 @@
 #define RESPONSE_IS_KEEPALIVE           6
 #define RESPONSE_IS_TEMPTHROTTLE        7
 #define RESPONSE_IS_TAGFOUND            8
-#define RESPONSE_IS_UNKNOWN             9
+#define RESPONSE_IS_NOTAGFOUND          9
+#define RESPONSE_IS_UNKNOWN             10
 
 //Create global database of tags
 #define MAX_NUMBER_OF_TAGS              10 //10 is good. Careful, you can run out of memory quickly.
@@ -95,11 +96,11 @@ class RFID
     
     bool check(void);
 
-    void readTagEPC(uint16_t timeOut = COMMAND_TIME_OUT);
+    uint8_t readTagEPC(uint8_t *epc, uint8_t *epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
     void writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
 
-    void writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
-    void readUserData(uint8_t *epc, uint16_t epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    void writeTagData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    void readTagData(uint8_t *epc, uint8_t epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
 
     void killTag(uint32_t pw, uint16_t timeOut = COMMAND_TIME_OUT);
 

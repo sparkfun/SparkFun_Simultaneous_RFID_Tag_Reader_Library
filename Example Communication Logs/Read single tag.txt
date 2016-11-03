@@ -259,10 +259,13 @@
     FF  00  91  00  00  17  58
 11/01/2016 07:37:56.088 PM Sending
     FF  05  22  00  00  13  01  F4  2B  19 - Read Tag Multiple
+
+    FF  05  22  00  (00  13)  (01  F4)  2B  19
+                init searchflag = 19        (500ms timeout)
 11/01/2016 07:37:56.593 PM Received
     FF  07  22  00  00  00  00  13  00  00  00  01  8B  58 - Read Tag Multiple
 11/01/2016 07:37:56.593 PM Sending
-    FF  03  29  01  FF  00  1B  03
+    FF  03  29  01  FF  00  1B  03 - Get Tag ID buffer
 11/01/2016 07:37:56.601 PM Received
     FF  26  29  00  00  01  FF  00  01  10  D4  11  0E  08  30  00
     00  00  09  00  00  05  00  00  00  00  80  30  00  E2  00  4B

@@ -39,29 +39,36 @@ void setup()
 
   nano.setRegion(0x0D); //Set to North America
 
-  nano.setReadPower(1000); //10.00 dBm.
+  nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  //nano.sendMessage(0x2A, 0, 0); //Clear tag ID buffer
-
-  nano.readTagEPC(500); //Scan for a new tag up to 500ms
-
-  //uint8_t blob1[] = {0x03, 0x85, 0x00};//, 0x00, 0x00};
-  //nano.sendMessage(TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE, blob1, sizeof(blob1)); //Read tag ID multiple
-
-  nano.printResponse(); 
-
-  //epc[E2 00 4B A5 F9 06 C1 B0 01 8D CB 05 ]
-
-  uint8_t blob4[] = {0x01, 0xFF, 0x00};
-  nano.sendMessage(0x29, blob4, sizeof(blob4)); //Get tag ID buffer
-  nano.printResponse();
-
-  while (1);
+  Serial.println(F("Press a key to scan for a tag"));
 }
 
 void loop()
 {
+  while (!Serial.available()); //Wait for user to send a character
+  Serial.read(); //Throw away the user's character
+
+  byte myEPC[16];
+  byte myEPClength[0];
+
+  byte response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
+
+  if (response == RESPONSE_IS_TAGFOUND)
+  {
+    //Print EPC
+    Serial.print(F(" epc["));
+    for (byte x = 0 ; x < myEPClength[0] ; x++)
+    {
+      if (myEPC[x] < 0x10) Serial.print(F("0"));
+      Serial.print(myEPC[x], HEX);
+      Serial.print(F(" "));
+    }
+    Serial.println(F("]"));
+  }
+  else
+    Serial.println("No tag detected");
 
 }
 

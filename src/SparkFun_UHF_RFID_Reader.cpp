@@ -20,19 +20,18 @@
 	tmr__status_8h.html - Contaings the Status Word error codes
 
   Functions to create:
-    readTagID (TMR_SR_OPCODE_READ_TAG_ID_SINGLE)
-    (done) startContiniousRead
-    (done) readTagData
-    (nyw) writeTagID
-    (nyw) writeTagData
-    (done) setReadTXPower / setWriteTXPower (or setPowerMode)
+    (done) setBaudRate
     (done) setRegion
-    (done) serBaudRate
+    (done) setReadPower
+    (done) startReading (continuous read)
+    (done) stopReading
+    (done) readTagEPC
+    (nyw) writeTagEPC
+    (done) readTagData
+    (nyw) writeTagData
     lockTag
     (nyw) killTag
-    (done) stopContiniousRead
     (kind of done) setOptionalParameters - enable read filter, iso configuration,
-    readTemp (read temp of module)
 */
 
 #if (ARDUINO >= 100)
@@ -199,7 +198,8 @@ void RFID::writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
 }
 
 //Read a single EPC
-void RFID::readTagEPC(uint16_t timeOut)
+//Caller must provide an array for EPC to be stored in
+uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t *epcLength, uint16_t timeOut)
 {
   uint8_t data[3];
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
@@ -207,6 +207,32 @@ void RFID::readTagEPC(uint16_t timeOut)
   data[2] = 0x00; //Init option byte
 
   sendMessage(TMR_SR_OPCODE_READ_TAG_ID_SINGLE, data, sizeof(data));
+
+  if(msg[0] == ALL_GOOD) //We received a good response
+  {
+    unsigned int status = (msg[3] << 8) | msg[4];
+    
+    if(status == 0x0000)
+    {
+      //Serial.print(F("Tag found:"));
+
+      //EPCs can vary in length. Calculate the number of bytes of this EPC
+      epcLength[0] = msg[1] - 3;
+      
+      //Load EPC
+      for (byte x = 0 ; x < epcLength[0] ; x++)
+        epc[x] = msg[6 + x];
+      
+      return(RESPONSE_IS_TAGFOUND);
+    }
+    else if(status == 0x0400)
+    {
+      epcLength[0] = 0;
+        
+      //Serial.println("No tag detected");
+      return(RESPONSE_IS_NOTAGFOUND);
+    }
+  }
 }
 
 
@@ -216,7 +242,7 @@ void RFID::readTagEPC(uint16_t timeOut)
 //TODO Add support for accessPassword
 //TODO Add support for writing to specific tag
 //TODO Maybe add support for writing to specific spot
-void RFID::writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut)
+void RFID::writeTagData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut)
 {
   //Example: FF  0A  24  03  E8  00  00  00  00  00  03  00  EE  58  9D
   //FF 0A 24 = Header, LEN, Opcode
@@ -254,8 +280,7 @@ void RFID::writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t tim
 //This reads the user data area of the tag. 64 bytes are normally available.
 //Use with caution. The module can't control which tag hears the command.
 //TODO Add support for accessPassword
-//TODO Add support for reading a specific tag
-void RFID::readUserData(uint8_t *epc, uint16_t epcLength, uint16_t timeOut)
+void RFID::readTagData(uint8_t *epc, uint8_t epcLength, uint16_t timeOut)
 {
   //Example: FF  12  28  03  E8  11  00  00  03  00  00  00  00  00  00  00  00  00  10  AA  BB  1E  F7
   //FF 12 28 = Header, LEN, Opcode
@@ -270,17 +295,20 @@ void RFID::readUserData(uint8_t *epc, uint16_t epcLength, uint16_t timeOut)
   //AA BB = Tag ID to read
   //1E F7 = CRC
   
+  Serial.print("epcLength:");
+  Serial.println(epcLength);
+ 
   uint8_t data[16 + epcLength];
 
   //Clear array
   for(uint8_t x = 0 ; x < sizeof(data) ; x++)
     data[x] = 0;
 
-  //Pre-load array with magicBlob
+  //Pre-load array with options
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
   data[1] = timeOut & 0xFF; //Timeout lsB in ms
   data[2] = 0x11; //Options
-  data[5] = 0x03; //Bank 3
+  data[5] = 0x03; //Bank 3 is user data bank
   data[15] = 0x10; //Unknown
   //data[16] = 0xAA; //Tag ID
   //data[17] = 0xBB; //Tag ID
@@ -348,49 +376,6 @@ void RFID::getOptionalParameters(uint8_t option1, uint8_t option2)
   data[0] = option1;
   data[1] = option2;
   sendMessage(TMR_SR_OPCODE_GET_READER_OPTIONAL_PARAMS, data, sizeof(data));
-}
-
-//Sends protocol parameters to the module
-//We know only the blob and are not able to yet identify what each parameter does
-void RFID::setProtocolParameters()
-{
-  //These are parameters gleaned from inspecting the 'Transport Logs' of the Universal Reader Assistant
-  //FF  03  9B  05  02  02  DE  EA
-  //FF  03  9B  05  12  00  CE  E8
-  //FF  03  9B  05  10  00  CC  E8
-  //FF  03  9B  05  11  00  CD  E8
-  //FF  03  9B  05  00  00  DC  E8
-  //FF  04  9B  05  01  01  00  A2  FD
-
-  uint8_t configBlob1[] = {0x05, 0x02, 0x02};
-  sendMessage(TMR_SR_OPCODE_SET_PROTOCOL_PARAM, configBlob1, sizeof(configBlob1));
-
-  uint8_t configBlob2[] = {0x05, 0x12, 0x00};
-  sendMessage(TMR_SR_OPCODE_SET_PROTOCOL_PARAM, configBlob2, sizeof(configBlob2));
-
-  uint8_t configBlob3[] = {0x05, 0x10, 0x00};
-  sendMessage(TMR_SR_OPCODE_SET_PROTOCOL_PARAM, configBlob3, sizeof(configBlob3));
-
-  uint8_t configBlob4[] = {0x05, 0x11, 0x00};
-  sendMessage(TMR_SR_OPCODE_SET_PROTOCOL_PARAM, configBlob4, sizeof(configBlob4));
-
-  uint8_t configBlob5[] = {0x05, 0x00, 0x00};
-  sendMessage(TMR_SR_OPCODE_SET_PROTOCOL_PARAM, configBlob5, sizeof(configBlob5));
-
-  uint8_t configBlob6[] = {0x05, 0x01, 0x01, 00};
-  sendMessage(TMR_SR_OPCODE_SET_PROTOCOL_PARAM, configBlob6, sizeof(configBlob6));
-}
-
-//Gets Protocol Parameters from the module
-//We know only the blob and are not able to yet identify what each parameter does
-void RFID::getProtocolParameters(uint8_t option1, uint8_t option2)
-{
-  //These are parameters gleaned from inspecting the 'Transport Logs' of the Universal Reader Assistant
-  //During setup the software pings different options
-  uint8_t data[2];
-  data[0] = option1;
-  data[1] = option2;
-  sendMessage(TMR_SR_OPCODE_GET_PROTOCOL_PARAM, data, sizeof(data));
 }
 
 //Get the version number from the module
@@ -474,6 +459,7 @@ bool RFID::check()
   return (false);
 }
 
+//See parseResponse for breakdown of fields
 //Pulls the number of EPC bytes out of the response
 //Often this is 12 bytes
 uint8_t RFID::getTagEPCBytes(void)
@@ -492,6 +478,7 @@ uint8_t RFID::getTagEPCBytes(void)
   Serial.println();
 }
 
+//See parseResponse for breakdown of fields
 //Pulls the number of data bytes out of the response
 //Often this is zero
 uint8_t RFID::getTagDataBytes(void)
@@ -504,12 +491,9 @@ uint8_t RFID::getTagDataBytes(void)
   if (tagDataLength % 8 > 0) tagDataBytes++; //Ceiling trick
 
   return(tagDataBytes);
-  //Read in data bytes
-  //uint8_t tagData[tagDataBytes];
-  //for (uint8_t x = 0 ; x < tagDataBytes ; x++)
-  //  tagData[x] = msg[26 + x];
 }
 
+//See parseResponse for breakdown of fields
 //Pulls the timestamp since last Keep-Alive message from a full response record stored in msg
 uint16_t RFID::getTagTimestamp(void)
 {
@@ -521,6 +505,7 @@ uint16_t RFID::getTagTimestamp(void)
   return(timeStamp);
 }
 
+//See parseResponse for breakdown of fields
 //Pulls the frequency value from a full response record stored in msg
 uint32_t RFID::getTagFreq(void)
 {
@@ -532,6 +517,7 @@ uint32_t RFID::getTagFreq(void)
   return(freq);
 }
 
+//See parseResponse for breakdown of fields
 //Pulls the RSSI value from a full response record stored in msg
 int8_t RFID::getTagRSSI(void)
 {

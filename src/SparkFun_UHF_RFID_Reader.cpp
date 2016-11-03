@@ -19,19 +19,18 @@
     serial_reader_imp.h - Contains the OpCodes
 	tmr__status_8h.html - Contaings the Status Word error codes
 
-  Functions to create:
-    (done) setBaudRate
-    (done) setRegion
-    (done) setReadPower
-    (done) startReading (continuous read)
-    (done) stopReading
-    (done) readTagEPC
-    (nyw) writeTagEPC
-    (done) readTagData
-    (nyw) writeTagData
-    lockTag
-    (nyw) killTag
-    (kind of done) setOptionalParameters - enable read filter, iso configuration,
+  Available Functions:
+    setBaudRate
+    setRegion
+    setReadPower
+    startReading (continuous read)
+    stopReading
+    readTagEPC
+    writeTagEPC
+    readTagData
+    writeTagData
+    killTag
+    (nyw) lockTag
 */
 
 #if (ARDUINO >= 100)
@@ -48,9 +47,11 @@ RFID::RFID(void)
 }
 
 //Initialize the Serial port
-bool RFID::begin(Stream &serialPort)
+bool RFID::begin(Stream &serialPort, boolean printCommands)
 {
   _nanoSerial = &serialPort; //Grab which port the user wants us to use
+  
+  _printCommands = printCommands; //Should we print the commands we send? Good for debugging
 
   //_nanoSerial->begin(); //Stream has no .begin() so the user has to do a whateverSerial.begin(xxxx); from setup()
 }
@@ -66,24 +67,8 @@ void RFID::setBaud(long baudRate)
   for (uint8_t x = 0 ; x < size ; x++)
     data[x] = (uint8_t)(baudRate >> (8 * (size - 1 - x)));
 
-  sendMessage(TMR_SR_OPCODE_SET_BAUD_RATE, data, size, false);
+  sendMessage(TMR_SR_OPCODE_SET_BAUD_RATE, data, size, COMMAND_TIME_OUT, false);
 }
-
-//Print the current message array - good for debugging, looking at how the module responded
-//TODO Don't hardcode the serial stream
-void RFID::printResponse(void)
-{
-  Serial.print("Response: ");
-  for (uint8_t x = 0 ; x < msg[1] + 7 ; x++)
-  {
-    Serial.print(" [");
-    if (msg[x] < 0x10) Serial.print("0");
-    Serial.print(msg[x], HEX);
-    Serial.print("]");
-  }
-  Serial.println();
-}
-
 
 //Begin scanning for tags
 //There are many many options and features to the nano, this sets options
@@ -106,7 +91,6 @@ void RFID::startReading()
     SETU16(newMsg, i, (uint16_t)0x0000); // search flags, only 0x0001 is supported
     SETU8(newMsg, i, (uint8_t)TMR_TAG_PROTOCOL_GEN2); // protocol ID
     */
-
 
   sendMessage(TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP, configBlob, sizeof(configBlob));
 }
@@ -171,17 +155,68 @@ void RFID::setTagProtocol(uint8_t protocol)
   sendMessage(TMR_SR_OPCODE_SET_TAG_PROTOCOL, data, sizeof(data));
 }
 
+//Read a single EPC
+//Caller must provide an array for EPC to be stored in
+uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
+{
+  uint8_t data[3];
+  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[1] = timeOut & 0xFF; //Timeout lsB in ms
+  data[2] = 0x00; //Init option byte
+
+  sendMessage(TMR_SR_OPCODE_READ_TAG_ID_SINGLE, data, sizeof(data), timeOut);
+
+  if(msg[0] == ALL_GOOD) //We received a good response
+  {
+    uint16_t status = (msg[3] << 8) | msg[4];
+    
+    if(status == 0x0000)
+    {
+      //Serial.print(F("Tag found:"));
+
+      uint8_t arraySize = epcLength; //The caller gave us the size of the array
+	  
+	  //EPCs can vary in length. Calculate the number of bytes of this EPC
+      epcLength = msg[1] - 3;
+	  
+	  if(epcLength > arraySize) epcLength = arraySize; //Limit to size of array
+
+      //Load EPC into caller's epc array
+      for (byte x = 0 ; x < epcLength ; x++)
+        epc[x] = msg[6 + x];
+      
+      return(RESPONSE_IS_TAGFOUND);
+    }
+    else if(status == 0x0400)
+    {
+      epcLength = 0;
+        
+      //Serial.println("No tag detected");
+      return(RESPONSE_IS_NOTAGFOUND);
+    }
+  }
+  
+  //Else - msg[0] was timeout or other
+  return(RESPONSE_IS_NOTAGFOUND);
+}
+
 //This writes a new EPC to the first tag it detects
 //Use with caution. This function doesn't control which tag hears the command.
-void RFID::writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
+uint8_t RFID::writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut)
 {
+  //This method doesn't work for some reason
+  //uint8_t bank = 0x01; //EPC memory
+  //uint8_t address = 0x00;
+	
+  //return(writeData(bank, address, newID, newIDLength, timeOut));
+
   //FF  06  23  03  E8  00  00  AA  BB  62  4E - Write AA BB to tag
   //FF  0A  23  03  E8  00  00  AA  BB  CC  DD  EE  FF  F2  7E - Write AA BB CC DD EE FF to tag
-
   //FF  0C  23  03  E8  01  00  00  00  00  10  CC  DD  AA  BB  55  D3 - Write AABB to tag CCDD
+  //                                        10 = (EPC is 16 bits)
 
   //Can you write really long IDs? Yes. Max I've written is 20 bytes. 12 or less is recommended
-
+  
   uint8_t data[4 + newIDLength];
 
   //Pre-load array with options
@@ -194,93 +229,24 @@ void RFID::writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut)
   for (uint8_t x = 0 ; x < newIDLength ; x++)
     data[4 + x] = newID[x];
 
-  sendMessage(TMR_SR_OPCODE_WRITE_TAG_ID, data, sizeof(data));
-}
-
-//Read a single EPC
-//Caller must provide an array for EPC to be stored in
-uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t *epcLength, uint16_t timeOut)
-{
-  uint8_t data[3];
-  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF; //Timeout lsB in ms
-  data[2] = 0x00; //Init option byte
-
-  sendMessage(TMR_SR_OPCODE_READ_TAG_ID_SINGLE, data, sizeof(data));
-
+  sendMessage(TMR_SR_OPCODE_WRITE_TAG_ID, data, sizeof(data), timeOut);
+  
   if(msg[0] == ALL_GOOD) //We received a good response
   {
-    unsigned int status = (msg[3] << 8) | msg[4];
+    uint16_t status = (msg[3] << 8) | msg[4];
     
     if(status == 0x0000)
-    {
-      //Serial.print(F("Tag found:"));
-
-      //EPCs can vary in length. Calculate the number of bytes of this EPC
-      epcLength[0] = msg[1] - 3;
-      
-      //Load EPC
-      for (byte x = 0 ; x < epcLength[0] ; x++)
-        epc[x] = msg[6 + x];
-      
-      return(RESPONSE_IS_TAGFOUND);
-    }
-    else if(status == 0x0400)
-    {
-      epcLength[0] = 0;
-        
-      //Serial.println("No tag detected");
-      return(RESPONSE_IS_NOTAGFOUND);
-    }
+      return(RESPONSE_IS_WRITE_SUCCESS);
   }
-}
 
-
-//This writes data to the tag. 64 bytes are normally available.
-//Writes to the first spot 0x00 and fills up as much of the 64 bytes as user provides
-//Use with caution. The module can't control which tag hears the command.
-//TODO Add support for accessPassword
-//TODO Add support for writing to specific tag
-//TODO Maybe add support for writing to specific spot
-void RFID::writeTagData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut)
-{
-  //Example: FF  0A  24  03  E8  00  00  00  00  00  03  00  EE  58  9D
-  //FF 0A 24 = Header, LEN, Opcode
-  //03 E8 = Timeout in ms
-  //00 = Option initialize
-  //00 00 00 00 = Address
-  //03 = Bank
-  //00 EE = Data
-  //58 9D = CRC
-
-  //Bank 0 = Passwords
-  //Bank 1 = EPC Memory Bank
-  //Bank 2 = TID
-  //Bank 3 = User Memory
-
-  uint8_t data[8 + userDataLength];
-
-  //Pre-load array with magicBlob
-  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF; //Timeout lsB in ms
-  data[2] = 0x00; //Option initialize
-  data[3] = 0x00;
-  data[4] = 0x00;
-  data[5] = 0x00;
-  data[6] = 0x00;
-  data[7] = 0x03; //Bank 3 for user data
-
-  //Dovetail new data onto blob
-  for (uint8_t x = 0 ; x < userDataLength ; x++)
-    data[8 + x] = userData[x];
-
-  sendMessage(TMR_SR_OPCODE_WRITE_TAG_DATA, data, sizeof(data));
+  //Else - msg[0] was timeout or other
+  return(RESPONSE_IS_WRITE_FAIL);
 }
 
 //This reads the user data area of the tag. 64 bytes are normally available.
 //Use with caution. The module can't control which tag hears the command.
 //TODO Add support for accessPassword
-void RFID::readTagData(uint8_t *epc, uint8_t epcLength, uint16_t timeOut)
+uint8_t RFID::readTagData(uint8_t *epc, uint8_t &epcLength, uint8_t *userData, uint8_t &userDataLength, uint16_t timeOut)
 {
   //Example: FF  12  28  03  E8  11  00  00  03  00  00  00  00  00  00  00  00  00  10  AA  BB  1E  F7
   //FF 12 28 = Header, LEN, Opcode
@@ -291,15 +257,14 @@ void RFID::readTagData(uint8_t *epc, uint8_t epcLength, uint16_t timeOut)
   //00 00 00 00 = Word address
   //00 = Length
   //00 00 00 00 = ?
-  //10 = ?
-  //AA BB = Tag ID to read
+  //10 = Number of EPC bits (0x10 = 16)
+  //AA BB = Tag EPC
   //1E F7 = CRC
   
-  Serial.print("epcLength:");
-  Serial.println(epcLength);
- 
   uint8_t data[16 + epcLength];
-
+  
+  uint8_t epcBits = epcLength * 8; //Number of bits of EPC
+  
   //Clear array
   for(uint8_t x = 0 ; x < sizeof(data) ; x++)
     data[x] = 0;
@@ -309,35 +274,135 @@ void RFID::readTagData(uint8_t *epc, uint8_t epcLength, uint16_t timeOut)
   data[1] = timeOut & 0xFF; //Timeout lsB in ms
   data[2] = 0x11; //Options
   data[5] = 0x03; //Bank 3 is user data bank
-  data[15] = 0x10; //Unknown
-  //data[16] = 0xAA; //Tag ID
-  //data[17] = 0xBB; //Tag ID
+  data[15] = epcBits; //Number of EPC bits
 
   //Dovetail EPC onto blob
   for (uint8_t x = 0 ; x < epcLength ; x++)
     data[16 + x] = epc[x];
 
-  sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data));
+  sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
+  
+  if (msg[0] == ALL_GOOD)
+  {
+	userDataLength = msg[1] - 3;
+	
+    //Load the User Data bytes into the caller's data array
+    for (byte x = 0 ; x < msg[1] - 3 ; x++)
+      userData[x] = msg[8 + x];
+  }
+
+  return(msg[0]);
+}
+
+//This writes data to the tag. 0, 4, 16 or 64 bytes may be available.
+//Writes to the first spot 0x00 and fills up as much of the bytes as user provides
+//Use with caution. Function doesn't control which tag hears the command.
+uint8_t RFID::writeTagData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut)
+{
+  uint8_t bank = 0x03; //User memory
+  uint8_t address = 0x00;
+	
+  return(writeData(bank, address, userData, userDataLength, timeOut));
+}
+
+//Write the kill password. Should be 4 bytes long
+uint8_t RFID::writeKillPW(uint8_t *password, uint8_t passwordLength, uint16_t timeOut)
+{
+	uint8_t bank = 0x00; //Passwords bank
+	uint8_t address = 0x00; //Kill password address
+	
+	return(writeData(bank, address, password, passwordLength, timeOut));
+}
+
+//Write the access password. Should be 4 bytes long
+uint8_t RFID::writeAccessPW(uint8_t *password, uint8_t passwordLength, uint16_t timeOut)
+{
+	uint8_t bank = 0x00; //Passwords bank
+	uint8_t address = 0x02; //Access password address
+
+	return(writeData(bank, address, password, passwordLength, timeOut));
+}
+
+//Writes a data array to a given bank and address
+//Allows for writing of passwords and user data
+//TODO Add support for accessPassword
+//TODO Add support for writing to specific tag
+uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut)
+{
+  //Example: FF  0A  24  03  E8  00  00  00  00  00  03  00  EE  58  9D
+  //FF 0A 24 = Header, LEN, Opcode
+  //03 E8 = Timeout in ms
+  //00 = Option initialize
+  //00 00 00 00 = Address
+  //03 = Bank
+  //00 EE = Data
+  //58 9D = CRC
+
+  uint8_t data[8 + dataLengthToRecord];
+
+  //Pre-load array options
+  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[1] = timeOut & 0xFF; //Timeout lsB in ms
+  data[2] = 0x00; //Option initialize
+
+  //Splice address into array
+  for (uint8_t x = 0 ; x < sizeof(address) ; x++)
+    data[3 + x] = address >> (8*(3-x)) & 0xFF;
+
+  //Bank 0 = Passwords
+  //Bank 1 = EPC Memory Bank
+  //Bank 2 = TID
+  //Bank 3 = User Memory
+  data[7] = bank;
+
+  //Splice data into array
+  for (uint8_t x = 0 ; x < dataLengthToRecord ; x++)
+    data[8 + x] = dataToRecord[x];
+
+  sendMessage(TMR_SR_OPCODE_WRITE_TAG_DATA, data, sizeof(data), timeOut);
+  
+  if(msg[0] == ALL_GOOD) //We received a good response
+  {
+    uint16_t status = (msg[3] << 8) | msg[4];
+    
+    if(status == 0x0000)
+      return(RESPONSE_IS_WRITE_SUCCESS);
+  }
+
+  //Else - msg[0] was timeout or other
+  return(RESPONSE_IS_WRITE_FAIL);
 }
 
 //Send the appropriate command to permanently kill a tag. If the password does not 
 //match the tag's pw it won't work. Default pw is 0x00000000
 //Use with caution. This function doesn't control which tag hears the command.
-void RFID::killTag(uint32_t pw, uint16_t timeOut)
+//TODO Can we add ability to write to specific EPC?
+uint8_t RFID::killTag(uint8_t *password, uint8_t passwordLength, uint16_t timeOut)
 {
-  uint8_t data[8];
+  uint8_t data[4 + passwordLength];
 
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
   data[1] = timeOut & 0xFF; //Timeout lsB in ms
   data[2] = 0x00; //Option initialize
 
   //Splice password into array
-  for (uint8_t x = 0 ; x < sizeof(pw) ; x++)
-    data[3 + x] = pw >> (8*(3-x)) & 0xFF;
+  for (uint8_t x = 0 ; x < passwordLength ; x++)
+    data[3 + x] = password[x];
 
-  data[7] = 0x00; //RFU
+  data[3 + passwordLength] = 0x00; //RFU
 
-  sendMessage(TMR_SR_OPCODE_KILL_TAG, data, sizeof(data));
+  sendMessage(TMR_SR_OPCODE_KILL_TAG, data, sizeof(data), timeOut);
+
+  if(msg[0] == ALL_GOOD) //We received a good response
+  {
+    uint16_t status = (msg[3] << 8) | msg[4];
+    
+    if(status == 0x0000)
+      return(RESPONSE_IS_WRITE_SUCCESS);
+  }
+
+  //Else - msg[0] was timeout or other
+  return(RESPONSE_IS_WRITE_FAIL);
 }
 
 void RFID::enableReadFilter(void)
@@ -563,27 +628,14 @@ uint8_t RFID::parseResponse(void)
   if ((msg[msgLength - 2] != (messageCRC >> 8)) || (msg[msgLength - 1] != (messageCRC & 0xFF)))
   {
 	//TODO remove all Serial print statements
-    Serial.println("Bad Message CRC!");
+    Serial.println(F("Bad Message CRC!"));
     return (ERROR_CORRUPT_RESPONSE);
   }
 
   if (opCode == TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE) //opCode = 0x22
   {
     //Based on the record length identify if this is a tag record, a temperature sensor record, or a keep-alive?
-    if (msg[1] == 0x0A) //Temp record
-    {
-      //We have a temperature status message
-      //float temperature = msg[14];
-
-      //Convert to F because I am a bad global citizen
-      //temperature = (temperature * 1.8) + 32.0;
-
-      //Serial.print("temperature: ");
-      //Serial.print(temperature, 1);
-      //Serial.println("F");
-      return (RESPONSE_IS_TEMPERATURE);
-    }
-    else if (msg[1] == 0x00) //Keep alive
+    if (msg[1] == 0x00) //Keep alive
     {
       //We have a Read cycle reset/keep-alive message
       //Sent once per second
@@ -613,7 +665,7 @@ uint8_t RFID::parseResponse(void)
   }
   else
   {
-    Serial.print("Unknown opcode in response: 0x");
+    Serial.print(F("Unknown opcode in response: 0x"));
     Serial.println(opCode, HEX);
     return (ERROR_UNKNOWN_OPCODE);
   }
@@ -621,7 +673,7 @@ uint8_t RFID::parseResponse(void)
 }
 
 //Given an opcode, a piece of data, and the size of that data, package up a sentence and send it
-void RFID::sendMessage(uint8_t opcode, uint8_t *data, uint8_t size, boolean waitForResponse)
+void RFID::sendMessage(uint8_t opcode, uint8_t *data, uint8_t size, uint16_t timeOut, boolean waitForResponse)
 {
   msg[1] = size; //Load the length of this operation into msg array
   msg[2] = opcode;
@@ -630,12 +682,12 @@ void RFID::sendMessage(uint8_t opcode, uint8_t *data, uint8_t size, boolean wait
   for (uint8_t x = 0 ; x < size ; x++)
     msg[3 + x] = data[x];
 
-  sendCommand(waitForResponse); //Send and wait for response
+  sendCommand(timeOut, waitForResponse); //Send and wait for response
 }
 
 //Given an array, calc CRC, assign header, send it out
 //Modifies the caller's msg array
-void RFID::sendCommand(boolean waitForResponse)
+void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
 {
   msg[0] = 0xFF; //Universal header
   uint8_t messageLength = msg[1];
@@ -646,15 +698,12 @@ void RFID::sendCommand(boolean waitForResponse)
   msg[messageLength + 3] = crc >> 8;
   msg[messageLength + 4] = crc & 0xFF;
 
-  Serial.print("sendCommand: ");
-  for (uint8_t x = 0 ; x < messageLength + 5 ; x++)
+  //Used for debugging: Does the user want us to print the command to serial port?
+  if(_printCommands == true)
   {
-    Serial.print(" [");
-    if (msg[x] < 0x10) Serial.print("0");
-    Serial.print(msg[x], HEX);
-    Serial.print("]");
+    Serial.print(F("sendCommand: "));
+	printMessageArray();
   }
-  Serial.println();
 
   //Remove anything in the incoming buffer
   //TODO this is a bad idea if we are constantly readings tags
@@ -671,12 +720,12 @@ void RFID::sendCommand(boolean waitForResponse)
   //for (uint8_t x = 0 ; x < 100 ; x++) msg[x] = 0;
 
   //Wait for response with timeout
-  long startTime = millis();
+  uint32_t startTime = millis();
   while (_nanoSerial->available() == false)
   {
-    if (millis() - startTime > COMMAND_TIME_OUT)
+    if (millis() - startTime > timeOut)
     {
-      Serial.println("Time out-1");
+      Serial.println(F("Time out-1"));
       msg[0] = ERROR_COMMAND_RESPONSE_TIMEOUT;
       return;
     }
@@ -690,10 +739,9 @@ void RFID::sendCommand(boolean waitForResponse)
   uint8_t spot = 0;
   while (spot < messageLength)
   {
-    if (millis() - startTime > COMMAND_TIME_OUT)
+    if (millis() - startTime > timeOut)
     {
-      Serial.println("Time out-2");
-      Serial.print("Fail :");
+      Serial.println(F("Time out-2 Fail:"));
       Serial.println(spot);
 
       msg[0] = ERROR_COMMAND_RESPONSE_TIMEOUT;
@@ -720,7 +768,7 @@ void RFID::sendCommand(boolean waitForResponse)
   if ((msg[messageLength - 2] != (crc >> 8)) || (msg[messageLength - 1] != (crc & 0xFF)))
   {
     msg[0] = ERROR_CORRUPT_RESPONSE;
-    Serial.println("Corrupt response");
+    Serial.println(F("Corrupt response"));
     return;
   }
 
@@ -728,19 +776,39 @@ void RFID::sendCommand(boolean waitForResponse)
   if (msg[2] != opcode)
   {
     msg[0] = ERROR_WRONG_OPCODE_RESPONSE;
-    Serial.println("Wrong opcode response");
+    Serial.println(F("Wrong opcode response"));
     return;
   }
 
   //If everything is ok, load all ok into msg array
   msg[0] = ALL_GOOD;
+
+  //Used for debugging: Does the user want us to print the command to serial port?
+  if(_printCommands == true)
+  {
+    Serial.print(F("response: "));
+	printMessageArray();
+  }
+
 }
 
+//Print the current message array - good for debugging, looking at how the module responded
+//TODO Don't hardcode the serial stream
+void RFID::printMessageArray(void)
+{
+  for (uint8_t x = 0 ; x < msg[1] + 7 ; x++)
+  {
+    Serial.print(" [");
+    if (msg[x] < 0x10) Serial.print("0");
+    Serial.print(msg[x], HEX);
+    Serial.print("]");
+  }
+  Serial.println();
+}
 
-/* Comes from serial_reader_l3.c
-   ThingMagic-mutated CRC used for messages.
-   Notably, not a CCITT CRC-16, though it looks close.
-*/
+//Comes from serial_reader_l3.c
+//ThingMagic-mutated CRC used for messages.
+//Notably, not a CCITT CRC-16, though it looks close.
 static uint16_t crctable[] =
 {
   0x0000, 0x1021, 0x2042, 0x3063,

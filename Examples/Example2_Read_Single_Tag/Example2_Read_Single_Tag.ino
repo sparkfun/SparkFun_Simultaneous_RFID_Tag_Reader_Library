@@ -28,38 +28,38 @@ void setup()
   Serial.println();
   Serial.println("Initializing...");
 
-  //57600 works well except for large comms like reading the freq hop table (205 bytes)
-  //38400 works with freq hop table reading
-  //9600 may be too slow for reading lots of tags simultaneously
-  if (setupNano(38400) == false) //Configure nano to run at 57600bps
+  if (setupNano(38400) == false) //Configure nano to run at 38400bps
   {
     Serial.println("Module failed to respond. Please check wiring.");
     while (1); //Freeze!
   }
 
-  nano.setRegion(0x0D); //Set to North America
+  nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
   nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
-
-  Serial.println(F("Press a key to scan for a tag"));
 }
+
 
 void loop()
 {
-  while (!Serial.available()); //Wait for user to send a character
-  Serial.read(); //Throw away the user's character
+  byte myEPC[12]; //Most EPCs are 12 bytes
+  byte myEPClength;
+  byte response = 0;
 
-  byte myEPC[16];
-  byte myEPClength[0];
+  while (response != RESPONSE_IS_TAGFOUND)
+  {
+    myEPClength = sizeof(myEPC); //We will pass this information to the function
 
-  byte response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
+    response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
+    Serial.println(F("Searching for tag"));
+  }
 
   if (response == RESPONSE_IS_TAGFOUND)
   {
     //Print EPC
     Serial.print(F(" epc["));
-    for (byte x = 0 ; x < myEPClength[0] ; x++)
+    for (byte x = 0 ; x < myEPClength ; x++)
     {
       if (myEPC[x] < 0x10) Serial.print(F("0"));
       Serial.print(myEPC[x], HEX);
@@ -70,6 +70,9 @@ void loop()
   else
     Serial.println("No tag detected");
 
+  Serial.println(F("Press a key to scan for a tag"));
+  while (!Serial.available()); //Wait for user to send a character
+  Serial.read(); //Throw away the user's character
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously

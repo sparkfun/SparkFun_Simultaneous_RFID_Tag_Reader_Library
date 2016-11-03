@@ -27,6 +27,7 @@
 #define TMR_SR_OPCODE_WRITE_TAG_DATA 0x24
 #define TMR_SR_OPCODE_KILL_TAG 0x26
 #define TMR_SR_OPCODE_READ_TAG_DATA 0x28
+#define TMR_SR_OPCODE_CLEAR_TAG_ID_BUFFER 0x2A
 #define TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP 0x2F
 #define TMR_SR_OPCODE_GET_READ_TX_POWER 0x62
 #define TMR_SR_OPCODE_GET_POWER_MODE 0x68
@@ -54,16 +55,26 @@
 #define RESPONSE_IS_TAGFOUND            8
 #define RESPONSE_IS_NOTAGFOUND          9
 #define RESPONSE_IS_UNKNOWN             10
+#define RESPONSE_IS_WRITE_SUCCESS       11
+#define RESPONSE_IS_WRITE_FAIL          12
 
-//Create global database of tags
-#define MAX_NUMBER_OF_TAGS              10 //10 is good. Careful, you can run out of memory quickly.
+//Define the allowed regions - these set the internal freq of the module
+#define REGION_INDIA        0x04
+#define REGION_JAPAN        0x05
+#define REGION_CHINA        0x06
+#define REGION_EUROPE       0x08
+#define REGION_KOREA        0x09
+#define REGION_AUSTRALIA    0x0B
+#define REGION_NEWZEALAND   0x0C
+#define REGION_NORTHAMERICA 0x0D
+#define REGION_OPEN         0xFF
 
 class RFID
 {
   public:
     RFID(void);
 
-    bool begin(Stream &serialPort = Serial); //If user doesn't specificy then Serial will be used
+    bool begin(Stream &serialPort = Serial, boolean printCommands = false); //If user doesn't specificy then Serial will be used
 
     void setBaud(long baudRate);
     void getVersion(void);
@@ -96,18 +107,22 @@ class RFID
     
     bool check(void);
 
-    uint8_t readTagEPC(uint8_t *epc, uint8_t *epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
-    void writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    uint8_t readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    uint8_t writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
 
-    void writeTagData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
-    void readTagData(uint8_t *epc, uint8_t epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    uint8_t readTagData(uint8_t *epc, uint8_t &epcLength, uint8_t *userData, uint8_t &userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    uint8_t writeTagData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
 
-    void killTag(uint32_t pw, uint16_t timeOut = COMMAND_TIME_OUT);
+	uint8_t writeKillPW(uint8_t *password, uint8_t passwordLength, uint16_t timeOut = COMMAND_TIME_OUT);
+	uint8_t writeAccessPW(uint8_t *password, uint8_t passwordLength, uint16_t timeOut = COMMAND_TIME_OUT);
+    uint8_t killTag(uint8_t *password, uint8_t passwordLength, uint16_t timeOut = COMMAND_TIME_OUT);
 
-    void sendMessage(uint8_t opcode, uint8_t *data = 0, uint8_t size = 0, boolean waitForResponse = true);
-    void sendCommand(boolean waitForResponse = true);
+	uint8_t writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut = COMMAND_TIME_OUT);
 
-    void printResponse(void);
+    void sendMessage(uint8_t opcode, uint8_t *data = 0, uint8_t size = 0, uint16_t timeOut = COMMAND_TIME_OUT, boolean waitForResponse = true);
+    void sendCommand(uint16_t timeOut = COMMAND_TIME_OUT, boolean waitForResponse = true);
+
+    void printMessageArray(void);
 
     uint16_t calculateCRC(uint8_t *u8Buf, uint8_t len);
 
@@ -118,13 +133,15 @@ class RFID
     //And before returning, response will be recorded into the msg array. Default is 255 bytes.
     uint8_t msg[MAX_MSG_SIZE];
 
-    uint16_t tags[MAX_NUMBER_OF_TAGS][12]; //Assumes EPC won't be longer than 12 bytes
-    uint16_t tagRSSI[MAX_NUMBER_OF_TAGS];  
-    uint16_t uniqueTags = 0;
+    //uint16_t tags[MAX_NUMBER_OF_TAGS][12]; //Assumes EPC won't be longer than 12 bytes
+    //uint16_t tagRSSI[MAX_NUMBER_OF_TAGS];  
+    //uint16_t uniqueTags = 0;
 
   private:
 
     Stream *_nanoSerial; //The generic connection to user's chosen serial hardware
 
     uint8_t _head = 0; //Tracks the length of the incoming message as we poll the software serial
+    
+    boolean _printCommands = false; //Flag to print the serial commands we are sending to the Serial port for debug
 };

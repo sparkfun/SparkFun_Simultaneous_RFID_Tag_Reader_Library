@@ -4,7 +4,7 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Single shot read - Ask the reader to tell us what tags it currently sees.
+  Read the user writeable data from a detected tag
 
   Arduino pin 2 to Nano TX
   Arduino pin 3 to Nano RX
@@ -25,32 +25,47 @@ void setup()
   Serial.println();
   Serial.println("Initializing...");
 
-  //57600 works well except for large comms like reading the freq hop table (205 bytes)
-  //38400 works with freq hop table reading
-  //9600 may be too slow for reading lots of tags simultaneously
-  if (setupNano(38400) == false) //Configure nano to run at 57600bps
+  if (setupNano(38400) == false) //Configure nano to run at 38400bps
   {
     Serial.println("Module failed to respond. Please check wiring.");
     while (1); //Freeze!
   }
 
-  nano.setRegion(0x0D); //Set to North America
+  nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
   nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
+}
 
-  Serial.println(F("Press a key to scan for a tag and read user data"));
+void loop()
+{
+  //First we have to find/detect a tag
+  byte myEPC[12]; //Most EPCs are 12 bytes
+  byte myEPClength;
+  byte response = 0;
 
-  byte myEPC[16];
-  byte myEPClength[0];
+  while (response != RESPONSE_IS_TAGFOUND)
+  {
+    myEPClength = sizeof(myEPC); //We will pass this information to the function
 
-  byte response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
+    response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
+    Serial.println(F("Searching for tag"));
+  }
+  Serial.println(F("Tag found!"));
 
-  if (response == RESPONSE_IS_TAGFOUND)
+  //Now that we have a tag loaded into the myEPC array, read the user data
+
+  //Read the data from the tag
+  byte myData[64];
+  byte myDataLength;
+  
+  response = nano.readTagData(myEPC, myEPClength, myData, myDataLength);
+
+  if(response == ALL_GOOD)
   {
     //Print EPC
     Serial.print(F(" epc["));
-    for (byte x = 0 ; x < myEPClength[0] ; x++)
+    for (byte x = 0 ; x < myEPClength ; x++)
     {
       if (myEPC[x] < 0x10) Serial.print(F("0"));
       Serial.print(myEPC[x], HEX);
@@ -58,30 +73,23 @@ void setup()
     }
     Serial.println(F("]"));
 
-    nano.readTagData(myEPC, myEPClength[0]);
-
-    if (nano.msg[0] != ALL_GOOD) Serial.println("Failed read");
-    nano.printResponse();
+    //Print User Data
+    Serial.print(F(" data["));
+    for (byte x = 0 ; x < myDataLength ; x++)
+    {
+      if (myData[x] < 0x10) Serial.print(F("0"));
+      Serial.print(myData[x], HEX);
+      Serial.print(F(" "));
+    }
+    Serial.println(F("]"));
   }
   else
-    Serial.println("No tag detected");
+    Serial.println(F("Error reading tag data"));
 
-
-  while (1);
-}
-
-void loop()
-{
+  Serial.println(F("Press a key to scan for a tag and read user data"));
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
-
-
-
 }
-
-
-
-
 
 //Gracefully handles a reader that is already configured and already reading continuously
 //Because Stream does not have a .begin() we have to do this outside the library

@@ -25,15 +25,15 @@ void setup()
   Serial.begin(115200);
   while (!Serial); //Wait for the serial port to come online
 
-  if (setupNano(57600) == false) //Configure nano to run at 57600bps
+  if (setupNano(38400) == false) //Configure nano to run at 38400bps
   {
     Serial.println(F("Module failed to respond. Please check wiring."));
     while (1); //Freeze!
   }
 
-  nano.setRegion(0x0D); //Set to North America
+  nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(1000); //10.00 dBm.
+  nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
   nano.startReading(); //Begin scanning for tags
@@ -48,7 +48,7 @@ void loop()
     byte response = nano.parseResponse(); //Break response into tag ID, RSSI, frequency, and timestamp
 
     if (response == RESPONSE_IS_KEEPALIVE)
-      Serial.println(F("Keep alive received"));
+      Serial.println(F("Scanning"));
     else if (response == RESPONSE_IS_TAGFOUND)
     {
       //If we have a full record we can pull out the fun bits
@@ -87,7 +87,7 @@ void loop()
         Serial.print(F("]"));
       }
 
-      //Print EPC bytes
+      //Print EPC bytes, this is a subsection of bytes from the response/msg array
       Serial.print(F(" epc["));
       for (byte x = 0 ; x < tagEPCBytes ; x++)
       {
@@ -102,7 +102,7 @@ void loop()
     else
     {
       //Unknown response
-      nano.printResponse(); //Print the response message. Look up errors in tmr__status_8h.html
+      nano.printMessageArray(); //Print the response message. Look up errors in tmr__status_8h.html
     }
   }
 }

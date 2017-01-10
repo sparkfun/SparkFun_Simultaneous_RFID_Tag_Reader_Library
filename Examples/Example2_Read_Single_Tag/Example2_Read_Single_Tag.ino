@@ -4,10 +4,10 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Single shot read - Ask the reader to tell us what tags it currently sees.
+  Single shot read - Ask the reader to tell us what tags it currently sees. And it beeps!
 
   If using the Simultaneous RFID Tag Reader (SRTR) shield, make sure the serial slide
-  switch is in the 'SW-UART' position
+  switch is in the 'SW-UART' position.
 
   Arduino pin 2 to Nano TX
   Arduino pin 3 to Nano RX
@@ -20,9 +20,17 @@ SoftwareSerial softSerial(2, 3); //RX, TX
 #include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
 RFID nano; //Create instance
 
+#define BUZZER1 9
+#define BUZZER2 10
+
 void setup()
 {
   Serial.begin(115200);
+
+  pinMode(BUZZER1, OUTPUT);
+  pinMode(BUZZER2, OUTPUT);
+
+  digitalWrite(BUZZER2, LOW); //Pull half the buzzer to ground and drive the other half.
 
   while (!Serial);
   Serial.println();
@@ -36,18 +44,22 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(2000); //20.00 dBm.
+  nano.setReadPower(1500); //15.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 }
 
 
 void loop()
 {
+  Serial.println(F("Press a key to scan for a tag"));
+  while (!Serial.available()); //Wait for user to send a character
+  Serial.read(); //Throw away the user's character
+
   byte myEPC[12]; //Most EPCs are 12 bytes
   byte myEPClength;
   byte response = 0;
 
-  while (response != RESPONSE_IS_TAGFOUND)
+  while (response != RESPONSE_SUCCESS)//RESPONSE_IS_TAGFOUND)
   {
     myEPClength = sizeof(myEPC); //We will pass this information to the function
 
@@ -55,24 +67,24 @@ void loop()
     Serial.println(F("Searching for tag"));
   }
 
-  if (response == RESPONSE_IS_TAGFOUND)
-  {
-    //Print EPC
-    Serial.print(F(" epc["));
-    for (byte x = 0 ; x < myEPClength ; x++)
-    {
-      if (myEPC[x] < 0x10) Serial.print(F("0"));
-      Serial.print(myEPC[x], HEX);
-      Serial.print(F(" "));
-    }
-    Serial.println(F("]"));
-  }
-  else
-    Serial.println("No tag detected");
+  //Beep! Piano keys to frequencies: http://www.sengpielaudio.com/KeyboardAndFrequencies.gif
+  tone(BUZZER1, 2093, 150); //C
+  delay(150);
+  tone(BUZZER1, 2349, 150); //D
+  delay(150);
+  tone(BUZZER1, 2637, 150); //E
+  delay(150);
 
-  Serial.println(F("Press a key to scan for a tag"));
-  while (!Serial.available()); //Wait for user to send a character
-  Serial.read(); //Throw away the user's character
+  //Print EPC
+  Serial.print(F(" epc["));
+  for (byte x = 0 ; x < myEPClength ; x++)
+  {
+    if (myEPC[x] < 0x10) Serial.print(F("0"));
+    Serial.print(myEPC[x], HEX);
+    Serial.print(F(" "));
+  }
+  Serial.println(F("]"));
+
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously
@@ -82,6 +94,8 @@ boolean setupNano(long baudRate)
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
+  while(!softSerial); //Wait for port to open
+  
   nano.begin(softSerial); //Tell the library to communicate over software serial port
   nano.getVersion();
 

@@ -39,42 +39,23 @@ void setup()
 
 void loop()
 {
-  //First we have to find/detect a tag
-  byte myEPC[12]; //Most EPCs are 12 bytes
-  byte myEPClength;
-  byte response = 0;
-
-  while (response != RESPONSE_IS_TAGFOUND)
-  {
-    myEPClength = sizeof(myEPC); //We will pass this information to the function
-
-    response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
-    Serial.println(F("Searching for tag"));
-  }
-  Serial.println(F("Tag found!"));
-
-  //Now that we have a tag loaded into the myEPC array, read the user data
+  Serial.println(F("Press a key to read user data"));
+  while (!Serial.available()); //Wait for user to send a character
+  Serial.read(); //Throw away the user's character
 
   //Read the data from the tag
+  byte response;
   byte myData[64];
-  byte myDataLength;
+  byte myDataLength = sizeof(myData); //Tell readUserData to read up to 64 bytes
   
-  response = nano.readTagData(myEPC, myEPClength, myData, myDataLength);
+  response = nano.readUserData(myData, myDataLength); //readUserData will modify myDataLength to the actual amt of bytes read
 
-  if(response == ALL_GOOD)
+  if(response == RESPONSE_SUCCESS)
   {
-    //Print EPC
-    Serial.print(F(" epc["));
-    for (byte x = 0 ; x < myEPClength ; x++)
-    {
-      if (myEPC[x] < 0x10) Serial.print(F("0"));
-      Serial.print(myEPC[x], HEX);
-      Serial.print(F(" "));
-    }
-    Serial.println(F("]"));
-
     //Print User Data
-    Serial.print(F(" data["));
+    Serial.print(F("Size ["));
+    Serial.print(myDataLength);
+    Serial.print(F("] User data["));
     for (byte x = 0 ; x < myDataLength ; x++)
     {
       if (myData[x] < 0x10) Serial.print(F("0"));
@@ -86,9 +67,6 @@ void loop()
   else
     Serial.println(F("Error reading tag data"));
 
-  Serial.println(F("Press a key to scan for a tag and read user data"));
-  while (!Serial.available()); //Wait for user to send a character
-  Serial.read(); //Throw away the user's character
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously
@@ -98,6 +76,8 @@ boolean setupNano(long baudRate)
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
+  while(!softSerial); //Wait for port to open
+
   nano.begin(softSerial); //Tell the library to communicate over software serial port
   nano.getVersion();
 

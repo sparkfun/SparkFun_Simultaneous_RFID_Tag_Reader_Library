@@ -4,13 +4,7 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Write new data to the user data area
-  Some tags have 64, 16 4, or 0 bytes of user data available for writing.
-
-  If you write more bytes than is available (10 bytes and only 4 available) module will simply timeout.
-
-  EPC is good for things like UPC (this is a gallon of milk)
-  User data is a good place to write things like the milk's best by date
+  Single shot read - Ask the reader to tell us what tags it currently sees.
 
   Arduino pin 2 to Nano TX
   Arduino pin 3 to Nano RX
@@ -31,42 +25,83 @@ void setup()
   Serial.println();
   Serial.println("Initializing...");
 
-  if (setupNano(38400) == false) //Configure nano to run at 38400bps
+  //57600 works well except for large comms like reading the freq hop table (205 bytes)
+  //38400 works with freq hop table reading
+  //9600 may be too slow for reading lots of tags simultaneously
+
+  //Adding the 2nd argument (true) to setup, library will print the commands sent to module out the Serial.print port
+  if (setupNano(38400, true) == false) //Configure nano to run at 57600bps
   {
     Serial.println("Module failed to respond. Please check wiring.");
     while (1); //Freeze!
   }
 
-  nano.setRegion(REGION_NORTHAMERICA); //Set to North America
+  nano.setRegion(0x0D); //Set to North America
 
   nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  //Warning! Writing to a tag causes module to go to max power
-  //An external power supply is required. Powering from USB alone will cause the sketch to reboot randomly.
+  Serial.println();
+  Serial.print("Clear buffer: ");
+  nano.sendMessage(0x2A); //Clear tag ID buffer
+  nano.printResponse();
+
+
+  nano.setAntennaPort();
+
+  uint8_t blob5[] = {0x00, 0x00, 0x13, 0x01, 0xF4};
+  nano.sendMessage(0x22, blob5, sizeof(blob5)); //Read tag ID multiple
+  nano.printResponse();
+
+  Serial.print("Get ID buffer: ");
+  uint8_t blob1[] = {0x01, 0xFF, 0x00};
+  nano.sendMessage(0x29, blob1, sizeof(blob1)); //Get tag ID buffer
+  nano.printResponse();
+
+
+  Serial.println(F("Press a key to scan for a tag and read user data"));
+
+  byte myEPC[16];
+  byte myEPClength[0];
+
+  byte response = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
+
+  if (response == RESPONSE_IS_TAGFOUND)
+  {
+    //Print EPC
+    Serial.print(F(" epc["));
+    for (byte x = 0 ; x < myEPClength[0] ; x++)
+    {
+      if (myEPC[x] < 0x10) Serial.print(F("0"));
+      Serial.print(myEPC[x], HEX);
+      Serial.print(F(" "));
+    }
+    Serial.println(F("]"));
+
+    Serial.println();
+    Serial.print("Clear buffer: ");
+    nano.sendMessage(0x2A); //Clear tag ID buffer
+    nano.printResponse();
+
+    nano.readTagData(myEPC, myEPClength[0], 1000);
+
+    if (nano.msg[0] != ALL_GOOD) Serial.println("Failed read");
+    nano.printResponse();
+  }
+  else
+    Serial.println("No tag detected");
+
+
+  while (1);
 }
 
 void loop()
 {
-  Serial.println();
-  Serial.println(F("Get all tags out of the area. Press a key to write DATA to first detected tag."));
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
 
-  //"Hello" is recorded as "Hell". You can only write even number of bytes
-  char testData[] = "ACBD"; //You can only write even number of bytes
-  byte response = nano.writeTagData(testData, sizeof(testData) - 1); //The -1 shaves off the \0 found at the end of string
-
-  if (response == RESPONSE_IS_WRITE_SUCCESS)
-    Serial.println("New Data Written!");
-  else
-  {
-    Serial.println();
-    Serial.println("Failed write");
-    Serial.println("Did you write too much data?");
-    Serial.println("Is the tag locked?");
-  }
 }
+
 
 //Gracefully handles a reader that is already configured and already reading continuously
 //Because Stream does not have a .begin() we have to do this outside the library

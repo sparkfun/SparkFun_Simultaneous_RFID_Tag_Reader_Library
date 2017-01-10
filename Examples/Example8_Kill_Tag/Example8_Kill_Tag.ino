@@ -4,13 +4,12 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Write new data to the user data area
-  Some tags have 64, 16 4, or 0 bytes of user data available for writing.
+  To kill a tag the tag's kill password must be set. When tags are shipped their passwords
+  are set to 0x00000000. See the Write_Passwords example to write access and kill passwords.
+  
+  Obviously, be careful because this premanently and irrevocably destroys a tag.
 
-  If you write more bytes than is available (10 bytes and only 4 available) module will simply timeout.
-
-  EPC is good for things like UPC (this is a gallon of milk)
-  User data is a good place to write things like the milk's best by date
+  This shows how to send the right command (with password) to disable a tag.
 
   Arduino pin 2 to Nano TX
   Arduino pin 3 to Nano RX
@@ -27,45 +26,36 @@ void setup()
 {
   Serial.begin(115200);
 
-  while (!Serial);
+  while(!Serial);
   Serial.println();
   Serial.println("Initializing...");
 
-  if (setupNano(38400) == false) //Configure nano to run at 38400bps
+  if(setupNano(38400) == false) //Configure nano to run at 38400bps
   {
     Serial.println("Module failed to respond. Please check wiring.");
-    while (1); //Freeze!
+    while(1); //Freeze!
   }
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
   nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
-
-  //Warning! Writing to a tag causes module to go to max power
-  //An external power supply is required. Powering from USB alone will cause the sketch to reboot randomly.
 }
 
 void loop()
 {
-  Serial.println();
-  Serial.println(F("Get all tags out of the area. Press a key to write DATA to first detected tag."));
+  Serial.println(F("Get all tags out of the area. Press a key to KILL first detected tag."));
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
 
-  //"Hello" is recorded as "Hell". You can only write even number of bytes
-  char testData[] = "ACBD"; //You can only write even number of bytes
-  byte response = nano.writeTagData(testData, sizeof(testData) - 1); //The -1 shaves off the \0 found at the end of string
+  byte myKillPW[] = {0xEE, 0xFF, 0x11, 0x22};
+
+  byte response = nano.killTag(myKillPW, sizeof(myKillPW));
 
   if (response == RESPONSE_IS_WRITE_SUCCESS)
-    Serial.println("New Data Written!");
+    Serial.println("New PW Written!");
   else
-  {
-    Serial.println();
     Serial.println("Failed write");
-    Serial.println("Did you write too much data?");
-    Serial.println("Is the tag locked?");
-  }
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously

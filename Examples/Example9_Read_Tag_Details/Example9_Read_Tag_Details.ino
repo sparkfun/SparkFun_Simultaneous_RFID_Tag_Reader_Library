@@ -4,13 +4,12 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Write new data to the user data area
-  Some tags have 64, 16 4, or 0 bytes of user data available for writing.
+  Every tag has a unique ID (the TID) that is not editable.
+  There is also the chip vendor ID and model ID for the tag.
 
-  If you write more bytes than is available (10 bytes and only 4 available) module will simply timeout.
+  TIDs are 20 bytes, 160 bits or 1,460,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000 different possible tag IDs
 
-  EPC is good for things like UPC (this is a gallon of milk)
-  User data is a good place to write things like the milk's best by date
+  This example shows how to read the tag details.
 
   Arduino pin 2 to Nano TX
   Arduino pin 3 to Nano RX
@@ -41,31 +40,35 @@ void setup()
 
   nano.setReadPower(2000); //20.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
-
-  //Warning! Writing to a tag causes module to go to max power
-  //An external power supply is required. Powering from USB alone will cause the sketch to reboot randomly.
 }
 
 void loop()
 {
-  Serial.println();
-  Serial.println(F("Get all tags out of the area. Press a key to write DATA to first detected tag."));
+  Serial.println(F("Get one tag near the reader. Press a key to read tag specifics."));
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
 
-  //"Hello" is recorded as "Hell". You can only write even number of bytes
-  char testData[] = "ACBD"; //You can only write even number of bytes
-  byte response = nano.writeTagData(testData, sizeof(testData) - 1); //The -1 shaves off the \0 found at the end of string
-
-  if (response == RESPONSE_IS_WRITE_SUCCESS)
-    Serial.println("New Data Written!");
-  else
+  byte response;
+  byte myTID[20]; //TIDs are 20 bytes
+  byte tidLength = sizeof(myTID);
+  
+  //Read unique ID of tag
+  response = nano.readTID(myTID, tidLength);
+  if (response == RESPONSE_SUCCESS)
   {
-    Serial.println();
-    Serial.println("Failed write");
-    Serial.println("Did you write too much data?");
-    Serial.println("Is the tag locked?");
+    Serial.println("TID read!");
+    Serial.print("TID: [");
+    for(byte x = 0 ; x < tidLength ; x++)
+    {
+      if(myTID[x] < 0x10) Serial.print("0");
+      Serial.print(myTID[x], HEX);
+      Serial.print(" ");
+    }
+    Serial.println("]");
   }
+  else
+    Serial.println("Failed read");
+
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously
@@ -77,7 +80,7 @@ boolean setupNano(long baudRate)
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
   while(!softSerial); //Wait for port to open
 
-  nano.begin(softSerial); //Tell the library to communicate over software serial port
+  nano.begin(softSerial, true); //Tell the library to communicate over software serial port
   nano.getVersion();
 
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)

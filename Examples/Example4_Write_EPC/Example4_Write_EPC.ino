@@ -52,10 +52,13 @@ void loop()
   Serial.read(); //Throw away the user's character
 
   //"Hello" Does not work. "Hell" will be recorded. You can only write even number of bytes
-  char testEPC[] = "222222Hello!"; //You can only write even number of bytes
-  byte response = nano.writeTagEPC(testEPC, sizeof(testEPC) - 1); //The -1 shaves off the \0 found at the end of string
+  //char stringEPC[] = "Hello!"; //You can only write even number of bytes
+  //byte response = nano.writeTagEPC(stringEPC, sizeof(stringEPC) - 1); //The -1 shaves off the \0 found at the end of string
 
-  if (response == RESPONSE_IS_WRITE_SUCCESS)
+  char hexEPC[] = {0xFF, 0x2D, 0x03, 0x54}; //You can only write even number of bytes
+  byte response = nano.writeTagEPC(hexEPC, sizeof(hexEPC));
+
+  if (response == RESPONSE_SUCCESS)
     Serial.println("New EPC Written!");
   else
     Serial.println("Failed write");
@@ -68,7 +71,9 @@ boolean setupNano(long baudRate)
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
-  nano.begin(softSerial); //Tell the library to communicate over software serial port
+  while(!softSerial); //Wait for port to open
+
+  nano.begin(softSerial, true); //Tell the library to communicate over software serial port
   nano.getVersion();
 
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)

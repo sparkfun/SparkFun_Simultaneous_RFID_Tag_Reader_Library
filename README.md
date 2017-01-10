@@ -1,13 +1,11 @@
-SparkFun MAX301x Particle Sensor Library
+SparkFun Simultaneous RFID Tag Reader Library
 ===========================================================
 
-![SparkFun Humidity and Temperature Sensor Breakout - HTU21D](https://dlnmh9ip6v2uc.cloudfront.net/images/products/1/2/0/6/4/12064-04.jpg)  
+![SparkFun Simultaneous RFID Tag Reader - NANO M6E](https://cdn.sparkfun.com//assets/parts/1/1/9/1/6/14066-06a.jpg)
 
-[*SparkFun Humidity and Temperature Sensor Breakout - HTU21D (SEN-12064)*](https://www.sparkfun.com/products/12064)
+[*SparkFun Simultaneous RFID Tag Reader - NANO M6E (SEN-14066)*](https://www.sparkfun.com/products/14066)
 
-This is a breadboard friendly breakout board for the Maxim MAX30105 reflectance, particle, and pulse ox sensor.
-
-Written by Peter Janen ([Open Sensing Lab](https://github.com/opensensinglab)) and Nathan Seidle ([SparkFun](http://www.sparkfun.com)).
+This is a powerful shield capable of reading multiple RFID tags at the same time. It can also write to tags. Works with UHF Gen2 RFID tags.
 
 Repository Contents
 -------------------
@@ -20,9 +18,9 @@ Repository Contents
 Documentation
 --------------
 
+* **[Hookup Guide](https://learn.sparkfun.com/tutorials/simultaneous-rfid-tag-reader-hookup-guide)** - Hookup guide for the RFID shield.
 * **[Installing an Arduino Library Guide](https://learn.sparkfun.com/tutorials/installing-an-arduino-library)** - Basic information on how to install an Arduino library.
-* **[Product Repository](https://github.com/sparkfun/HTU21D_Breakout)** - Main repository (including hardware files) for the HTU21D breakout board.
-* **[Hookup Guide](https://learn.sparkfun.com/tutorials/htu21d-humidity-sensor-hookup-guide?_ga=1.239533187.1678495895.1378918345)** - Basic hookup guide for the  HTU21D breakout board.
+* **[Product Repository](https://github.com/sparkfun/SparkFun_Simultaneous_RFID_Tag_Reader)** - Main repository (including hardware files) for the RFID Shield.
 
 License Information
 -------------------

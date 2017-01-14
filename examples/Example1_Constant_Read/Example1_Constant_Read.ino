@@ -1,5 +1,5 @@
 /*
-  Reading multipule RFID tags, simultaneously!
+  Reading multiple RFID tags, simultaneously!
   By: Nathan Seidle @ SparkFun Electronics
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
@@ -33,7 +33,7 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(2000); //20.00 dBm.
+  nano.setReadPower(500); //5.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
   nano.startReading(); //Begin scanning for tags
@@ -45,11 +45,13 @@ void loop()
 {
   if (nano.check() == true) //Check to see if any new data has come in from module
   {
-    byte response = nano.parseResponse(); //Break response into tag ID, RSSI, frequency, and timestamp
+    byte responseType = nano.parseResponse(); //Break response into tag ID, RSSI, frequency, and timestamp
 
-    if (response == RESPONSE_IS_KEEPALIVE)
+    if (responseType == RESPONSE_IS_KEEPALIVE)
+    {
       Serial.println(F("Scanning"));
-    else if (response == RESPONSE_IS_TAGFOUND)
+    }
+    else if (responseType == RESPONSE_IS_TAGFOUND)
     {
       //If we have a full record we can pull out the fun bits
       int rssi = nano.getTagRSSI(); //Get the RSSI for this tag read

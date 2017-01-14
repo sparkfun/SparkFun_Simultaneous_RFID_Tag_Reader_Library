@@ -47,13 +47,22 @@ RFID::RFID(void)
 }
 
 //Initialize the Serial port
-bool RFID::begin(Stream &serialPort, boolean printDebug)
+bool RFID::begin(Stream &serialPort)
 {
   _nanoSerial = &serialPort; //Grab which port the user wants us to use
 
-  _printDebug = printDebug; //Should we print the commands we send? Good for debugging
-
   //_nanoSerial->begin(); //Stream has no .begin() so the user has to do a whateverSerial.begin(xxxx); from setup()
+}
+
+//Enable or disable the printing of sent/response HEX values.
+//Use this in conjunction with 'Transport Logging' from the Universal Reader Assistant to see what they're doing that we're not
+void RFID::enableDebugging(void)
+{
+  _printDebug = true; //Should we print the commands we send? Good for debugging
+}
+void RFID::disableDebugging(void)
+{
+  _printDebug = false; //Turn off extra print statements
 }
 
 //Set baud rate
@@ -236,6 +245,15 @@ void RFID::setWritePower(int16_t powerSetting)
   sendMessage(TMR_SR_OPCODE_SET_WRITE_TX_POWER, data, size);
 }
 
+//Get the write TX power
+void RFID::getWritePower()
+{
+  uint8_t data[] = {0x00}; //Just return power
+  //uint8_t data[] = {0x01}; //Return power with limits
+
+  sendMessage(TMR_SR_OPCODE_GET_WRITE_TX_POWER, data, sizeof(data));
+}
+
 //Read a single EPC
 //Caller must provide an array for EPC to be stored in
 uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
@@ -250,13 +268,39 @@ uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
 //Use with caution. This function doesn't control which tag hears the command.
 uint8_t RFID::writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x01; //EPC memory
-  uint8_t address = 0x02; //EPC starts at spot 4
+  //using writeData to write to the bank only writes the first four bytes from some reason
+  //uint8_t bank = 0x01; //EPC memory
+  //uint8_t address = 0x02; //EPC starts at spot 4
+  //return (writeData(bank, address, newID, newIDLength, timeOut));
+  
+  
+  
+  //Original way of writing new EPC
+  //Can you write really long IDs? Yes. Max I've written is 20 bytes. 12 or less is recommended
+  uint8_t data[4 + newIDLength];
 
-  return (writeData(bank, address, newID, newIDLength, timeOut));
+  //Pre-load array with options
+  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[1] = timeOut & 0xFF; //Timeout lsB in ms
+  data[2] = 0x00; //RFU
+  data[3] = 0x00;
+
+  //Dovetail new EPC ID onto blob
+  for (uint8_t x = 0 ; x < newIDLength ; x++)
+    data[4 + x] = newID[x];
+
+  sendMessage(TMR_SR_OPCODE_WRITE_TAG_ID, data, sizeof(data));
+
+  if (msg[0] == ALL_GOOD) //We received a good response
+  {
+    return (RESPONSE_SUCCESS);
+  }
+
+  //Else - msg[0] was timeout or other
+  return (RESPONSE_FAIL);
 }
 
-//This reads the user data area of the tag. 64 bytes are normally available.
+//This reads the user data area of the tag. 0 to 64 bytes are normally available.
 //Use with caution. The module can't control which tag hears the command.
 //TODO Add support for accessPassword
 uint8_t RFID::readUserData(uint8_t *userData, uint8_t &userDataLength, uint16_t timeOut)

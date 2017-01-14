@@ -1,5 +1,5 @@
 /*
-  Reading multipule RFID tags, simultaneously!
+  Reading multiple RFID tags, simultaneously!
   By: Nathan Seidle @ SparkFun Electronics
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
@@ -33,7 +33,7 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(2000); //20.00 dBm.
+  nano.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 }
 
@@ -44,13 +44,13 @@ void loop()
   Serial.read(); //Throw away the user's character
 
   //Read the data from the tag
-  byte response;
+  byte responseType;
   byte myData[64];
   byte myDataLength = sizeof(myData); //Tell readUserData to read up to 64 bytes
   
-  response = nano.readUserData(myData, myDataLength); //readUserData will modify myDataLength to the actual amt of bytes read
+  responseType = nano.readUserData(myData, myDataLength); //readUserData will modify myDataLength to the actual amt of bytes read
 
-  if(response == RESPONSE_SUCCESS)
+  if(responseType == RESPONSE_SUCCESS)
   {
     //Print User Data
     Serial.print(F("Size ["));

@@ -1,5 +1,5 @@
 /*
-  Reading multipule RFID tags, simultaneously!
+  Reading multiple RFID tags, simultaneously!
   By: Nathan Seidle @ SparkFun Electronics
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
@@ -35,7 +35,7 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(2000); //20.00 dBm.
+  nano.setReadPower(500); //5.00 dBm.
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 }
 
@@ -70,7 +70,6 @@ void loop()
   //Read Access PW
   pwLength = sizeof(myPW); //Reset this variable. May have been changed above.
   response = nano.readAccessPW(myPW, pwLength);
-
   if (response == RESPONSE_SUCCESS)
   {
     Serial.println("PW read!");
@@ -91,12 +90,16 @@ void loop()
 //Because Stream does not have a .begin() we have to do this outside the library
 boolean setupNano(long baudRate)
 {
+  nano.begin(softSerial); //Tell the library to communicate over software serial port
+
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
   while(!softSerial); //Wait for port to open
 
-  nano.begin(softSerial, true); //Tell the library to communicate over software serial port
+  //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
+  while(softSerial.available()) softSerial.read();
+  
   nano.getVersion();
 
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)

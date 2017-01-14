@@ -30,6 +30,7 @@
 #define TMR_SR_OPCODE_CLEAR_TAG_ID_BUFFER 0x2A
 #define TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP 0x2F
 #define TMR_SR_OPCODE_GET_READ_TX_POWER 0x62
+#define TMR_SR_OPCODE_GET_WRITE_TX_POWER 0x64
 #define TMR_SR_OPCODE_GET_POWER_MODE 0x68
 #define TMR_SR_OPCODE_GET_READER_OPTIONAL_PARAMS 0x6A
 #define TMR_SR_OPCODE_GET_PROTOCOL_PARAM 0x6B
@@ -74,13 +75,17 @@ class RFID
   public:
     RFID(void);
 
-    bool begin(Stream &serialPort = Serial, boolean printCommands = false); //If user doesn't specificy then Serial will be used
+    bool begin(Stream &serialPort = Serial); //If user doesn't specify then Serial will be used
+	
+	void enableDebugging(void); //Turn on command sending and response printing
+	void disableDebugging(void);
 
     void setBaud(long baudRate);
     void getVersion(void);
     void setReadPower(int16_t powerSetting);
     void getReadPower();
     void setWritePower(int16_t powerSetting);
+    void getWritePower();
     void setRegion(uint8_t region);
     void setAntennaPort();
     void setAntennaSearchList();

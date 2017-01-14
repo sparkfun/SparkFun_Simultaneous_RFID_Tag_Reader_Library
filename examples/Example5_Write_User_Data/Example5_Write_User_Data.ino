@@ -1,5 +1,5 @@
 /*
-  Reading multipule RFID tags, simultaneously!
+  Reading multiple RFID tags, simultaneously!
   By: Nathan Seidle @ SparkFun Electronics
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
@@ -39,11 +39,11 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(2000); //20.00 dBm.
+  nano.setReadPower(500); //5.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  //Warning! Writing to a tag causes module to go to max power
-  //An external power supply is required. Powering from USB alone will cause the sketch to reboot randomly.
+  nano.setWritePower(1500); //5.00 dBm. Higher values may caues USB port to brown out
+  //Max Write TX Power is 27.00 dBm and may cause temperature-limit throttling
 }
 
 void loop()
@@ -55,15 +55,15 @@ void loop()
 
   //"Hello" is recorded as "Hell". You can only write even number of bytes
   char testData[] = "ACBD"; //You can only write even number of bytes
-  byte response = nano.writeTagData(testData, sizeof(testData) - 1); //The -1 shaves off the \0 found at the end of string
+  byte responseType = nano.writeUserData(testData, sizeof(testData) - 1); //The -1 shaves off the \0 found at the end of string
 
-  if (response == RESPONSE_IS_WRITE_SUCCESS)
+  if (responseType == RESPONSE_SUCCESS)
     Serial.println("New Data Written!");
   else
   {
     Serial.println();
     Serial.println("Failed write");
-    Serial.println("Did you write too much data?");
+    Serial.println("Did you write more data than the tag has memory?");
     Serial.println("Is the tag locked?");
   }
 }
@@ -72,12 +72,16 @@ void loop()
 //Because Stream does not have a .begin() we have to do this outside the library
 boolean setupNano(long baudRate)
 {
+  nano.begin(softSerial); //Tell the library to communicate over software serial port
+
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
   while(!softSerial); //Wait for port to open
 
-  nano.begin(softSerial); //Tell the library to communicate over software serial port
+  //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
+  while(softSerial.available()) softSerial.read();
+  
   nano.getVersion();
 
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)

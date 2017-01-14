@@ -70,8 +70,6 @@ boolean setupNano(long baudRate)
 {
   nano.begin(softSerial); //Tell the library to communicate over software serial port
 
-  nano.enableDebugging();
-
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate

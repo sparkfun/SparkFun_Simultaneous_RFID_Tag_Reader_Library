@@ -17,7 +17,7 @@
   To learn more about how ThingMagic controls the module please look at the following SDK files:
     serial_reader_l3.c - Contains the bulk of the low-level routines
     serial_reader_imp.h - Contains the OpCodes
-    tmr__status_8h.html - Contaings the Status Word error codes
+    tmr__status_8h.html - Contains the Status Word error codes
 
   Available Functions:
     setBaudRate
@@ -268,14 +268,12 @@ uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
 //Use with caution. This function doesn't control which tag hears the command.
 uint8_t RFID::writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut)
 {
-  //using writeData to write to the bank only writes the first four bytes from some reason
+  //Using writeData to write to the EPC bank only writes the first four bytes from some reason
   //uint8_t bank = 0x01; //EPC memory
   //uint8_t address = 0x02; //EPC starts at spot 4
   //return (writeData(bank, address, newID, newIDLength, timeOut));
   
-  
-  
-  //Original way of writing new EPC
+   //Original way of writing new EPC
   //Can you write really long IDs? Yes. Max I've written is 20 bytes. 12 or less is recommended
   uint8_t data[4 + newIDLength];
 
@@ -318,7 +316,7 @@ uint8_t RFID::writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t 
 {
   uint8_t bank = 0x03; //User memory
   uint8_t address = 0x00;
-
+  
   return (writeData(bank, address, userData, userDataLength, timeOut));
 }
 
@@ -417,8 +415,7 @@ uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, u
   return (RESPONSE_FAIL);
 }
 
-//Writes a data array to a given bank and address
-//Allows for writing of passwords and user data
+//Reads a given bank and address to a data array
 //TODO Add support for accessPassword
 //TODO Add support for writing to specific tag
 uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t *dataLengthRead, uint16_t timeOut)
@@ -455,7 +452,7 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
   for (uint8_t x = 0 ; x < sizeof(address) ; x++)
     data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
 
-  data[7] = 0x00; //Number of words to read. 0 will read the entire bank
+  data[7] = 0x04; //Number of words to read. 0 will read the entire bank
 
   sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
 
@@ -482,6 +479,7 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
   dataLengthRead[0] = 0; //Inform caller that we weren't able to read anything
 
   return (RESPONSE_FAIL);
+
 }
 
 //Send the appropriate command to permanently kill a tag. If the password does not

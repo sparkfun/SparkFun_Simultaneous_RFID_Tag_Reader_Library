@@ -39,10 +39,10 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(500); //5.00 dBm. Higher values may caues USB port to brown out
+  nano.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  nano.setWritePower(1500); //5.00 dBm. Higher values may caues USB port to brown out
+  nano.setWritePower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Write TX Power is 27.00 dBm and may cause temperature-limit throttling
 }
 
@@ -63,6 +63,7 @@ void loop()
   {
     Serial.println();
     Serial.println("Failed write");
+    Serial.println("Are you sure no other tags are in the area?");
     Serial.println("Did you write more data than the tag has memory?");
     Serial.println("Is the tag locked?");
   }

@@ -1,5 +1,5 @@
 /*
-  Reading multipule RFID tags, simultaneously!
+  Reading multiple RFID tags, simultaneously!
   By: Nathan Seidle @ SparkFun Electronics
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
@@ -38,8 +38,11 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(2000); //20.00 dBm.
+  nano.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
+
+  nano.setWritePower(500); //5.00 dBm. Higher values may cause USB port to brown out
+  //Max Write TX Power is 27.00 dBm and may cause temperature-limit throttling
 }
 
 void loop()
@@ -48,14 +51,18 @@ void loop()
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
 
-  byte myKillPW[] = {0xEE, 0xFF, 0x11, 0x22};
+  byte myKillPW[] = {0x1A, 0x2B, 0x3C, 0x4E}; //This must be edited to match your kill password
+//  byte myKillPW[] = {0xEE, 0xFF, 0x11, 0x22};
 
   byte response = nano.killTag(myKillPW, sizeof(myKillPW));
 
-  if (response == RESPONSE_IS_WRITE_SUCCESS)
-    Serial.println("New PW Written!");
+  if (response == RESPONSE_SUCCESS)
+    Serial.println("Tag has been killed!");
   else
-    Serial.println("Failed write");
+  {
+    Serial.println("Kill Failed");
+    Serial.println("Did you set the kill PW to something other than 0s?");
+  }
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously

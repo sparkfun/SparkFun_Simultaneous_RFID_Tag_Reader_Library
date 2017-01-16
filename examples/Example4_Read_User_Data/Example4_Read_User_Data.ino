@@ -48,7 +48,7 @@ void loop()
   byte myData[64];
   byte myDataLength = sizeof(myData); //Tell readUserData to read up to 64 bytes
   
-  responseType = nano.readUserData(myData, myDataLength); //readUserData will modify myDataLength to the actual amt of bytes read
+  responseType = nano.readUserData(myData, myDataLength); //readUserData will modify myDataLength to the actual # of bytes read
 
   if(responseType == RESPONSE_SUCCESS)
   {

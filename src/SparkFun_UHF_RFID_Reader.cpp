@@ -261,7 +261,7 @@ uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
   uint8_t bank = 0x01; //User data bank
   uint8_t address = 0x02; //Starts at 2
 
-  return (readData(bank, address, epc, &epcLength, timeOut));
+  return (readData(bank, address, epc, epcLength, timeOut));
 }
 
 //This writes a new EPC to the first tag it detects
@@ -282,7 +282,7 @@ uint8_t RFID::readUserData(uint8_t *userData, uint8_t &userDataLength, uint16_t 
   uint8_t bank = 0x03; //User data bank
   uint8_t address = 0x00; //Starts at 0
 
-  return (readData(bank, address, userData, &userDataLength, timeOut));
+  return (readData(bank, address, userData, userDataLength, timeOut));
 }
 
 //This writes data to the tag. 0, 4, 16 or 64 bytes may be available.
@@ -306,7 +306,7 @@ uint8_t RFID::writeKillPW(uint8_t *password, uint8_t passwordLength, uint16_t ti
 }
 
 //Read the kill password. Should be 4 bytes long
-uint8_t RFID::readKillPW(uint8_t *password, uint8_t *passwordLength, uint16_t timeOut)
+uint8_t RFID::readKillPW(uint8_t *password, uint8_t &passwordLength, uint16_t timeOut)
 {
   uint8_t bank = 0x00; //Passwords bank
   uint8_t address = 0x00; //Kill password address
@@ -324,7 +324,7 @@ uint8_t RFID::writeAccessPW(uint8_t *password, uint8_t passwordLength, uint16_t 
 }
 
 //Read the access password. Should be 4 bytes long
-uint8_t RFID::readAccessPW(uint8_t *password, uint8_t *passwordLength, uint16_t timeOut)
+uint8_t RFID::readAccessPW(uint8_t *password, uint8_t &passwordLength, uint16_t timeOut)
 {
   uint8_t bank = 0x00; //Passwords bank
   uint8_t address = 0x02; //Access password address
@@ -333,7 +333,7 @@ uint8_t RFID::readAccessPW(uint8_t *password, uint8_t *passwordLength, uint16_t 
 }
 
 //Read the unique TID of the tag. Should be 20 bytes long
-uint8_t RFID::readTID(uint8_t *tid, uint8_t *tidLength, uint16_t timeOut)
+uint8_t RFID::readTID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
 {
   uint8_t bank = 0x02; //Bank for TID,
   uint8_t address = 0x02; //TID starts at 4
@@ -395,7 +395,7 @@ uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, u
 //Allows for writing of passwords and user data
 //TODO Add support for accessPassword
 //TODO Add support for writing to specific tag
-uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t *dataLengthRead, uint16_t timeOut)
+uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut)
 {
   //Bank 0
   //response: [00] [08] [28] [00] [00] [EE] [FF] [11] [22] [12] [34] [56] [78]
@@ -429,7 +429,8 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
   for (uint8_t x = 0 ; x < sizeof(address) ; x++)
     data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
 
-  data[7] = 0x04; //Number of words to read. 0 will read the entire bank
+  data[7] = dataLengthRead / 2; //Number of 16-bit chunks to read. 
+  //0x00 will read the entire bank but may be more than we expect (both Kill and Access PW will be returned when reading bank 1 from address 0)
 
   sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
 
@@ -442,18 +443,19 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
       uint8_t responseLength = msg[1];
 
       if (responseLength < dataLengthRead) //User wants us to read more than we have available
-        dataLengthRead[0] = responseLength;
+        dataLengthRead = responseLength;
 
-      //Load data into caller's array
-      for (uint8_t x = 0 ; x < responseLength ; x++)
+	  //There is a case here where responseLegnth is more than dataLengthRead, in which case we ignore (don't load) the additional bytes
+      //Load limited response data into caller's array
+	  for (uint8_t x = 0 ; x < dataLengthRead ; x++)
         dataRead[x] = msg[5 + x];
-
+	  
       return (RESPONSE_SUCCESS);
     }
   }
 
   //Else - msg[0] was timeout or other
-  dataLengthRead[0] = 0; //Inform caller that we weren't able to read anything
+  dataLengthRead = 0; //Inform caller that we weren't able to read anything
 
   return (RESPONSE_FAIL);
 }

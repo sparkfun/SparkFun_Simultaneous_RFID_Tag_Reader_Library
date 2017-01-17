@@ -426,6 +426,7 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
   //Insert timeout
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
   data[1] = timeOut & 0xFF; //Timeout lsB in ms
+
   data[2] = bank; //Bank
 
   //Splice address into array
@@ -434,6 +435,9 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
 
   data[7] = dataLengthRead / 2; //Number of 16-bit chunks to read. 
   //0x00 will read the entire bank but may be more than we expect (both Kill and Access PW will be returned when reading bank 1 from address 0)
+  
+  //When reading the user data area we need to read the entire bank
+  if(bank == 0x03) data[7] = 0x00;
 
   sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
 

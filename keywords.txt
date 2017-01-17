@@ -12,71 +12,71 @@ RFID KEYWORD1
 # Methods and Functions (KEYWORD2)
 #######################################
 
-begin KEYWORD2
+begin 	KEYWORD2
 
-enableDebugging KEYWORD2
-disableDebugging KEYWORD2
+enableDebugging 	KEYWORD2
+disableDebugging 	KEYWORD2
 
-setBaud KEYWORD2
-getVersion KEYWORD2
+setBaud 	KEYWORD2
+getVersion 	KEYWORD2
 
-setReadPower KEYWORD2
-getReadPower KEYWORD2
+setReadPower	KEYWORD2
+getReadPower 	KEYWORD2
 
-setWritePower KEYWORD2
-getWritePower KEYWORD2
+setWritePower 	KEYWORD2
+getWritePower 	KEYWORD2
 
-setRegion KEYWORD2
-setAntennaPort KEYWORD2
-setAntennaSearchList KEYWORD2
-setTagProtocol KEYWORD2
+setRegion 	KEYWORD2
+setAntennaPort	 KEYWORD2
+setAntennaSearchList 	KEYWORD2
+setTagProtocol 	KEYWORD2
 
-startReading KEYWORD2
-stopReading KEYWORD2
+startReading	 KEYWORD2
+stopReading 	KEYWORD2
 
-enableReadFilter KEYWORD2
-disableReadFilter KEYWORD2
+enableReadFilter 	KEYWORD2
+disableReadFilter	 KEYWORD2
 
-setReaderConfiguration KEYWORD2
-getOptionalParameters KEYWORD2
-setProtocolParameters KEYWORD2
-getProtocolParameters KEYWORD2
+setReaderConfiguration 	KEYWORD2
+getOptionalParameters	 KEYWORD2
+setProtocolParameters 	KEYWORD2
+getProtocolParameters	 KEYWORD2
 
-parseReponse KEYWORD2
+parseReponse 	KEYWORD2
 
-getTagEPCBytes KEYWORD2
-getTagDataBytes KEYWORD2
-getTagTimestamp KEYWORD2
-getTagFreq KEYWORD2
-getTagRSSI KEYWORD2
+getTagEPCBytes	 KEYWORD2
+getTagDataBytes	 KEYWORD2
+getTagTimestamp	 KEYWORD2
+getTagFreq	 KEYWORD2
+getTagRSSI 	KEYWORD2
 
-check KEYWORD2
+check 	KEYWORD2
 
-readTagEPC KEYWORD2
-writeTagEPC KEYWORD2
+readTagEPC 	KEYWORD2
+writeTagEPC 	KEYWORD2
 
-readData KEYWORD2
-writeData KEYWORD2
+readData	 KEYWORD2
+writeData 	KEYWORD2
 
-readUserData KEYWORD2
-writeUserData KEYWORD2
+readUserData	KEYWORD2
+writeUserData	 KEYWORD2
 
-readKillPW KEYWORD2
-writeKillPW KEYWORD2
+readKillPW 	KEYWORD2
+writeKillPW		KEYWORD2
 
-readAccessPW KEYWORD2
-writeAccessPW KEYWORD2
+readAccessPW 	KEYWORD2
+writeAccessPW 	KEYWORD2
 
-readTID KEYWORD2
+readTID	 KEYWORD2
 
-killTag KEYWORD2
+killTag 	KEYWORD2
 
-sendMessage KEYWORD2
-sendCommand KEYWORD2
+sendMessage		KEYWORD2
+sendCommand 	KEYWORD2
 
-printMessageArray KEYWORD2
+printMessageArray	 KEYWORD2
 
-calculateCRC KEYWORD2
+calculateCRC 	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)

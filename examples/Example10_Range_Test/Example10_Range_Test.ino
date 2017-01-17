@@ -4,12 +4,15 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Every tag has a unique ID (the TID) that is not editable.
-  There is also the chip vendor ID and model ID for the tag.
+  Constantly reads and emits a high tone beep when a tag is detected, and a low tone beep
+  when no tags are detected. This is useful for testing the read range of your setup.
 
-  TIDs are 20 bytes, 160 bits or 1,460,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000 different possible tag IDs
+  Note: Humans are basically bags of water. If you hold the tag in your hand you'll
+  degrade the range significantly (you meatbag, you). Tape the tag to a rolling chair
+  or other non-metal, non-watery device.
 
-  This example shows how to read the tag ID.
+  If using the Simultaneous RFID Tag Reader (SRTR) shield, make sure the serial slide
+  switch is in the 'SW-UART' position
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device
@@ -19,55 +22,70 @@ SoftwareSerial softSerial(2, 3); //RX, TX
 #include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
 RFID nano; //Create instance
 
+//#define BUZZER1 9
+#define BUZZER1 0 //For testing silently
+#define BUZZER2 10
+
+boolean tagDetected; //Keeps track of when we've beeped
+
 void setup()
 {
   Serial.begin(115200);
+  
+  pinMode(BUZZER1, OUTPUT);
+  pinMode(BUZZER2, OUTPUT);
 
-  while (!Serial);
-  Serial.println();
-  Serial.println("Initializing...");
+  digitalWrite(BUZZER2, LOW); //Pull half the buzzer to ground and drive the other half.
+
+  while (!Serial); //Wait for the serial port to come online
 
   if (setupNano(38400) == false) //Configure nano to run at 38400bps
   {
-    Serial.println("Module failed to respond. Please check wiring.");
+    Serial.println(F("Module failed to respond. Please check wiring."));
     while (1); //Freeze!
   }
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
+  //nano.setReadPower(500); //5.00 dBm. Higher values may caues USB port to brown out
+  nano.setReadPower(2000); //5.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  nano.enableDebugging(); //Turns on commands sent to and heard from RFID module
+  nano.startReading(); //Begin scanning for tags
+
+  Serial.println("Go!");
+
+  lowBeep(); //Indicate no tag found
+  tagDetected = false;
 }
 
 void loop()
 {
-  Serial.println(F("Get one tag near the reader. Press a key to read unique tag ID."));
-  while (!Serial.available()); //Wait for user to send a character
-  Serial.read(); //Throw away the user's character
-
-  byte response;
-  byte myTID[20]; //TIDs are 20 bytes
-  byte tidLength = sizeof(myTID);
-  
-  //Read unique ID of tag
-  response = nano.readTID(myTID, tidLength);
-  if (response == RESPONSE_SUCCESS)
+  if (nano.check() == true) //Check to see if any new data has come in from module
   {
-    Serial.println("TID read!");
-    Serial.print("TID: [");
-    for(byte x = 0 ; x < tidLength ; x++)
-    {
-      if(myTID[x] < 0x10) Serial.print("0");
-      Serial.print(myTID[x], HEX);
-      Serial.print(" ");
-    }
-    Serial.println("]");
-  }
-  else
-    Serial.println("Failed read");
+    byte responseType = nano.parseResponse(); //Break response into tag ID, RSSI, frequency, and timestamp
 
+    if (responseType == RESPONSE_IS_TAGFOUND)
+    {
+      Serial.println(F("Tag detected!"));
+      if (tagDetected == false)
+      {
+        tagDetected = true;
+        highBeep();
+        delay(500);
+      }
+    }
+    else
+    {
+      Serial.println(F("No tag found..."));
+
+      if (tagDetected == true)
+      {
+        tagDetected = false;
+        lowBeep();
+      }
+    }
+  }
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously
@@ -76,16 +94,18 @@ boolean setupNano(long baudRate)
 {
   nano.begin(softSerial); //Tell the library to communicate over software serial port
 
+  nano.enableDebugging();
+
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
-  while(!softSerial); //Wait for port to open
+  while (!softSerial); //Wait for port to open
 
   //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
-  while(softSerial.available()) softSerial.read();
-  
+  while (softSerial.available()) softSerial.read();
+
   nano.getVersion();
-  
+
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)
   {
     //This happens if the baud rate is correct but the module is doing a ccontinuous read
@@ -115,5 +135,17 @@ boolean setupNano(long baudRate)
   nano.setAntennaPort(); //Set TX/RX antenna ports to 1
 
   return (true); //We are ready to rock
+}
+
+void lowBeep()
+{
+  tone(BUZZER1, 130, 150); //Low C
+  delay(150);
+}
+
+void highBeep()
+{
+  tone(BUZZER1, 2093, 150); //High C
+  delay(150);
 }
 

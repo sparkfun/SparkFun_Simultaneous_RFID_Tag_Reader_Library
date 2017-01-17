@@ -7,9 +7,6 @@
   Don't get too excited, this only reads the passwords if they are unlocked.
 
   There are two passwords associated with any given tag: the Kill PW and the Acess PW
-
-  Arduino pin 2 to Nano TX
-  Arduino pin 3 to Nano RX
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device

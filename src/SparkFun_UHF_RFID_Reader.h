@@ -77,7 +77,7 @@ class RFID
 
     bool begin(Stream &serialPort = Serial); //If user doesn't specify then Serial will be used
 	
-	void enableDebugging(void); //Turn on command sending and response printing
+	void enableDebugging(Stream &debuglPort = Serial); //Turn on command sending and response printing. If user doesn't specify then Serial will be used
 	void disableDebugging(void);
 
     void setBaud(long baudRate);
@@ -152,6 +152,8 @@ class RFID
   private:
 
     Stream *_nanoSerial; //The generic connection to user's chosen serial hardware
+
+    Stream *_debugSerial; //The stream to send debug messages to if enabled
 
     uint8_t _head = 0; //Tracks the length of the incoming message as we poll the software serial
     

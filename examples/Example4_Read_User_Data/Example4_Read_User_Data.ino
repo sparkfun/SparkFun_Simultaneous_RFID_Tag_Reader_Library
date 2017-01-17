@@ -5,9 +5,6 @@
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
   Read the user writeable data from a detected tag
-
-  Arduino pin 2 to Nano TX
-  Arduino pin 3 to Nano RX
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device

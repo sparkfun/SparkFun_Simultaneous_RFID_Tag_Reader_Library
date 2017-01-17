@@ -56,8 +56,10 @@ bool RFID::begin(Stream &serialPort)
 
 //Enable or disable the printing of sent/response HEX values.
 //Use this in conjunction with 'Transport Logging' from the Universal Reader Assistant to see what they're doing that we're not
-void RFID::enableDebugging(void)
+void RFID::enableDebugging(Stream &debugPort)
 {
+  _debugSerial = &debugPort; //Grab which port the user wants us to use for debugging
+  
   _printDebug = true; //Should we print the commands we send? Good for debugging
 }
 void RFID::disableDebugging(void)
@@ -209,7 +211,7 @@ void RFID::getVersion(void)
 }
 
 //Set the read TX power
-//Power is as follows: maximum power is 2700 = 27.00 dBm
+//Maximum power is 2700 = 27.00 dBm
 //1005 = 10.05dBm
 void RFID::setReadPower(int16_t powerSetting)
 {
@@ -234,7 +236,8 @@ void RFID::getReadPower()
 }
 
 //Set the write power
-//Power is -32,768 to 32,767
+//Maximum power is 2700 = 27.00 dBm
+//1005 = 10.05dBm
 void RFID::setWritePower(int16_t powerSetting)
 {
   uint8_t size = sizeof(powerSetting);
@@ -521,6 +524,13 @@ bool RFID::check()
           msg[x] = 0;
 
         _head = 0; //Reset
+		
+		//Used for debugging: Does the user want us to print the command to serial port?
+		if (_printDebug == true)
+		{
+		  _debugSerial->print(F("response: "));
+		  printMessageArray();
+		}
 
         return (true);
       }
@@ -545,8 +555,6 @@ uint8_t RFID::getTagEPCBytes(void)
   epcBytes -= 4; //Ignore the first two bytes and last two bytes
 
   return (epcBytes);
-
-  Serial.println();
 }
 
 //See parseResponse for breakdown of fields
@@ -633,8 +641,6 @@ uint8_t RFID::parseResponse(void)
   uint16_t messageCRC = calculateCRC(&msg[1], msgLength - 3 ); //Ignore header (start spot 1), remove 3 bytes (header + 2 CRC)
   if ((msg[msgLength - 2] != (messageCRC >> 8)) || (msg[msgLength - 1] != (messageCRC & 0xFF)))
   {
-    //TODO remove all Serial print statements
-    Serial.println(F("Bad Message CRC!"));
     return (ERROR_CORRUPT_RESPONSE);
   }
 
@@ -671,8 +677,11 @@ uint8_t RFID::parseResponse(void)
   }
   else
   {
-    Serial.print(F("Unknown opcode in response: 0x"));
-    Serial.println(opCode, HEX);
+    if (_printDebug == true)
+	{
+		_debugSerial->print(F("Unknown opcode in response: 0x"));
+		_debugSerial->println(opCode, HEX);
+	}
     return (ERROR_UNKNOWN_OPCODE);
   }
 
@@ -708,7 +717,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   //Used for debugging: Does the user want us to print the command to serial port?
   if (_printDebug == true)
   {
-    Serial.print(F("sendCommand: "));
+    _debugSerial->print(F("sendCommand: "));
     printMessageArray();
   }
 
@@ -736,7 +745,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   {
     if (millis() - startTime > timeOut)
     {
-      if (_printDebug == true) Serial.println(F("Time out 1: No response from module"));
+      if (_printDebug == true) _debugSerial->println(F("Time out 1: No response from module"));
       msg[0] = ERROR_COMMAND_RESPONSE_TIMEOUT;
       return;
     }
@@ -752,7 +761,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   {
     if (millis() - startTime > timeOut)
     {
-      if (_printDebug == true) Serial.println(F("Time out 2: Incomplete response"));
+      if (_printDebug == true) _debugSerial->println(F("Time out 2: Incomplete response"));
 
       msg[0] = ERROR_COMMAND_RESPONSE_TIMEOUT;
       return;
@@ -776,7 +785,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   //Used for debugging: Does the user want us to print the command to serial port?
   if (_printDebug == true)
   {
-    Serial.print(F("response: "));
+    _debugSerial->print(F("response: "));
     printMessageArray();
   }
 
@@ -785,7 +794,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   if ((msg[messageLength - 2] != (crc >> 8)) || (msg[messageLength - 1] != (crc & 0xFF)))
   {
     msg[0] = ERROR_CORRUPT_RESPONSE;
-    if (_printDebug == true) Serial.println(F("Corrupt response"));
+    if (_printDebug == true) _debugSerial->println(F("Corrupt response"));
     return;
   }
 
@@ -793,7 +802,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   if (msg[2] != opcode)
   {
     msg[0] = ERROR_WRONG_OPCODE_RESPONSE;
-    if (_printDebug == true) Serial.println(F("Wrong opcode response"));
+    if (_printDebug == true) _debugSerial->println(F("Wrong opcode response"));
     return;
   }
 
@@ -808,12 +817,12 @@ void RFID::printMessageArray(void)
 {
   for (uint8_t x = 0 ; x < msg[1] + 5 ; x++)
   {
-    Serial.print(" [");
-    if (msg[x] < 0x10) Serial.print("0");
-    Serial.print(msg[x], HEX);
-    Serial.print("]");
+    _debugSerial->print(" [");
+    if (msg[x] < 0x10) _debugSerial->print("0");
+    _debugSerial->print(msg[x], HEX);
+    _debugSerial->print("]");
   }
-  Serial.println();
+  _debugSerial->println();
 }
 
 //Comes from serial_reader_l3.c

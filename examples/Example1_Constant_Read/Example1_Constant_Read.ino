@@ -8,9 +8,6 @@
 
   If using the Simultaneous RFID Tag Reader (SRTR) shield, make sure the serial slide
   switch is in the 'SW-UART' position
-
-  Arduino pin 2 to Nano TX
-  Arduino pin 3 to Nano RX
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device

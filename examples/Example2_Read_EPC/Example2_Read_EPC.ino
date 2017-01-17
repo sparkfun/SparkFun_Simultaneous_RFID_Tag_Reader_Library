@@ -8,9 +8,6 @@
 
   If using the Simultaneous RFID Tag Reader (SRTR) shield, make sure the serial slide
   switch is in the 'SW-UART' position.
-
-  Arduino pin 2 to Nano TX
-  Arduino pin 3 to Nano RX
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device
@@ -20,8 +17,8 @@ SoftwareSerial softSerial(2, 3); //RX, TX
 #include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
 RFID nano; //Create instance
 
-//#define BUZZER1 9
-#define BUZZER1 0 //For testing quietly
+#define BUZZER1 9
+//#define BUZZER1 0 //For testing quietly
 #define BUZZER2 10
 
 void setup()

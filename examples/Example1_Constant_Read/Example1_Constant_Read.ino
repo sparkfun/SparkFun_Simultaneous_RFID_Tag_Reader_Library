@@ -57,8 +57,6 @@ void loop()
 
       long timeStamp = nano.getTagTimestamp(); //Get the time this was read, (ms) since last keep-alive message
 
-      byte tagDataBytes = nano.getTagDataBytes(); //Get the number of bytes of tag data from response
-
       byte tagEPCBytes = nano.getTagEPCBytes(); //Get the number of bytes of EPC from response
 
       Serial.print(F(" rssi["));
@@ -73,24 +71,11 @@ void loop()
       Serial.print(timeStamp);
       Serial.print(F("]"));
 
-      if (tagDataBytes > 0)
-      {
-        //Print any data bytes
-        Serial.print(F(" tagData["));
-        for (byte x = 0 ; x < tagDataBytes ; x++)
-        {
-          if (nano.msg[26 + x] < 0x10) Serial.print(F("0"));
-          Serial.print(nano.msg[26 + x], HEX);
-          Serial.print(F(" "));
-        }
-        Serial.print(F("]"));
-      }
-
       //Print EPC bytes, this is a subsection of bytes from the response/msg array
       Serial.print(F(" epc["));
       for (byte x = 0 ; x < tagEPCBytes ; x++)
       {
-        if (nano.msg[31 + tagDataBytes + x] < 0x10) Serial.print(F("0"));
+        if (nano.msg[31 + tagDataBytes + x] < 0x10) Serial.print(F("0")); //Pretty print
         Serial.print(nano.msg[31 + tagDataBytes + x], HEX);
         Serial.print(F(" "));
       }

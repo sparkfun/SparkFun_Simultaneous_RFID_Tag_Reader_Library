@@ -4,8 +4,10 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Constantly reads and emits a high tone beep when a tag is detected, and a low tone beep
+  Constantly reads. Emits a high tone beep when a tag is detected, and a low tone beep
   when no tags are detected. This is useful for testing the read range of your setup.
+
+  Use an external power supply at set to max read power.
 
   Note: Humans are basically bags of water. If you hold the tag in your hand you'll
   degrade the range significantly (you meatbag, you). Tape the tag to a rolling chair
@@ -22,16 +24,17 @@ SoftwareSerial softSerial(2, 3); //RX, TX
 #include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
 RFID nano; //Create instance
 
-//#define BUZZER1 9
-#define BUZZER1 0 //For testing silently
+#define BUZZER1 9
+//#define BUZZER1 0 //For testing silently
 #define BUZZER2 10
 
 boolean tagDetected; //Keeps track of when we've beeped
-
+long lastSeen = 0; //Tracks the time when we last detected a tag
+int counter = 0; //Tracks how many times we've read a tag
 void setup()
 {
   Serial.begin(115200);
-  
+
   pinMode(BUZZER1, OUTPUT);
   pinMode(BUZZER2, OUTPUT);
 
@@ -47,8 +50,8 @@ void setup()
 
   nano.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  //nano.setReadPower(500); //5.00 dBm. Higher values may caues USB port to brown out
-  nano.setReadPower(2000); //5.00 dBm. Higher values may caues USB port to brown out
+  //nano.setReadPower(500); //Limited read range
+  nano.setReadPower(2700); //You'll need an external power supply for this setting
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
   nano.startReading(); //Begin scanning for tags
@@ -67,25 +70,27 @@ void loop()
 
     if (responseType == RESPONSE_IS_TAGFOUND)
     {
-      Serial.println(F("Tag detected!"));
-      if (tagDetected == false)
+      Serial.print(F("Tag detected: "));
+      Serial.println(counter++);
+      
+      lastSeen = millis();
+
+      if (tagDetected == false) //Beep only once
       {
         tagDetected = true;
         highBeep();
-        delay(500);
-      }
-    }
-    else
-    {
-      Serial.println(F("No tag found..."));
-
-      if (tagDetected == true)
-      {
-        tagDetected = false;
-        lowBeep();
       }
     }
   }
+
+  if (tagDetected == true && (millis() - lastSeen) > 1000)
+  {
+    Serial.println(F("No tag found..."));
+
+    tagDetected = false;
+    lowBeep();
+  }
+
 }
 
 //Gracefully handles a reader that is already configured and already reading continuously
@@ -94,7 +99,7 @@ boolean setupNano(long baudRate)
 {
   nano.begin(softSerial); //Tell the library to communicate over software serial port
 
-  nano.enableDebugging();
+  //nano.enableDebugging();
 
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered

@@ -42,7 +42,7 @@ getOptionalParameters	 KEYWORD2
 setProtocolParameters 	KEYWORD2
 getProtocolParameters	 KEYWORD2
 
-parseReponse 	KEYWORD2
+parseResponse 	KEYWORD2
 
 getTagEPCBytes	 KEYWORD2
 getTagDataBytes	 KEYWORD2

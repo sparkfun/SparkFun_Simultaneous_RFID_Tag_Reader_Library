@@ -20,7 +20,7 @@ Documentation
 
 * **[Hookup Guide](https://learn.sparkfun.com/tutorials/simultaneous-rfid-tag-reader-hookup-guide)** - Hookup guide for the RFID shield.
 * **[Installing an Arduino Library Guide](https://learn.sparkfun.com/tutorials/installing-an-arduino-library)** - Basic information on how to install an Arduino library.
-* **[Product Repository](https://github.com/sparkfun/SparkFun_Simultaneous_RFID_Tag_Reader)** - Main repository (including hardware files) for the RFID Shield.
+* **[Product Repository](https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader)** - Main repository (including hardware files) for the RFID Shield.
 
 License Information
 -------------------

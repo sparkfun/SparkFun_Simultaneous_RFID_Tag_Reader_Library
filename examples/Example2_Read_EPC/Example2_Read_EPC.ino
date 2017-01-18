@@ -58,7 +58,7 @@ void loop()
 
   while (responseType != RESPONSE_SUCCESS)//RESPONSE_IS_TAGFOUND)
   {
-    myEPClength = sizeof(myEPC); //We will pass this information to the function
+    myEPClength = sizeof(myEPC); //Length of EPC is modified each time .readTagEPC is called
 
     responseType = nano.readTagEPC(myEPC, myEPClength, 500); //Scan for a new tag up to 500ms
     Serial.println(F("Searching for tag"));

@@ -10,9 +10,6 @@
   Obviously, be careful because this premanently and irrevocably destroys a tag.
 
   This shows how to send the right command (with password) to disable a tag.
-
-  Arduino pin 2 to Nano TX
-  Arduino pin 3 to Nano RX
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device
@@ -69,12 +66,16 @@ void loop()
 //Because Stream does not have a .begin() we have to do this outside the library
 boolean setupNano(long baudRate)
 {
+  nano.begin(softSerial); //Tell the library to communicate over software serial port
+
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
   while(!softSerial); //Wait for port to open
 
-  nano.begin(softSerial); //Tell the library to communicate over software serial port
+  //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
+  while(softSerial.available()) softSerial.read();
+  
   nano.getVersion();
 
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)

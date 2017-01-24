@@ -33,9 +33,11 @@ void setup()
   nano.setReadPower(500); //5.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  nano.startReading(); //Begin scanning for tags
+  Serial.println(F("Press a key to begin scanning for tags."));
+  while (!Serial.available()); //Wait for user to send a character
+  Serial.read(); //Throw away the user's character
 
-  Serial.println("Go!");
+  nano.startReading(); //Begin scanning for tags
 }
 
 void loop()
@@ -75,8 +77,8 @@ void loop()
       Serial.print(F(" epc["));
       for (byte x = 0 ; x < tagEPCBytes ; x++)
       {
-        if (nano.msg[31 + tagDataBytes + x] < 0x10) Serial.print(F("0")); //Pretty print
-        Serial.print(nano.msg[31 + tagDataBytes + x], HEX);
+        if (nano.msg[31 + x] < 0x10) Serial.print(F("0")); //Pretty print
+        Serial.print(nano.msg[31 + x], HEX);
         Serial.print(F(" "));
       }
       Serial.print(F("]"));

@@ -34,8 +34,6 @@ void setup()
 
   nano.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
-
-  nano.enableDebugging();
 }
 
 void loop()

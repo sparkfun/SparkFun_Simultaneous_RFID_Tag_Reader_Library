@@ -10,9 +10,6 @@
 
   EPC is good for things like UPC (this is a gallon of milk)
   User data is a good place to write things like the milk's best by date
-
-  Arduino pin 2 to Nano TX
-  Arduino pin 3 to Nano RX
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device

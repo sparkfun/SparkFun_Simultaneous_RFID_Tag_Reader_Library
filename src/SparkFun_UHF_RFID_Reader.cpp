@@ -538,6 +538,7 @@ bool RFID::check()
 
         return (true);
       }
+	  
     }
   }
 
@@ -819,14 +820,20 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
 //TODO Don't hardcode the serial stream
 void RFID::printMessageArray(void)
 {
-  for (uint8_t x = 0 ; x < msg[1] + 5 ; x++)
+  if(_printDebug == true) //If user hasn't enabled debug we don't know what port to debug to
   {
-    _debugSerial->print(" [");
-    if (msg[x] < 0x10) _debugSerial->print("0");
-    _debugSerial->print(msg[x], HEX);
-    _debugSerial->print("]");
+	uint8_t amtToPrint = msg[1] + 5;
+	if (amtToPrint > MAX_MSG_SIZE) amtToPrint = MAX_MSG_SIZE; //Limit this size
+	  
+	for (uint16_t x = 0 ; x < amtToPrint ; x++)
+	{
+	  _debugSerial->print(" [");
+	  if (msg[x] < 0x10) _debugSerial->print("0");
+	  _debugSerial->print(msg[x], HEX);
+	  _debugSerial->print("]");
+	}
+	_debugSerial->println();
   }
-  _debugSerial->println();
 }
 
 //Comes from serial_reader_l3.c

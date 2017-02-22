@@ -85,10 +85,14 @@ void loop()
 
       Serial.println();
     }
+    else if (responseType == ERROR_CORRUPT_RESPONSE)
+    {
+      Serial.println("Bad CRC");
+    }
     else
     {
       //Unknown response
-      nano.printMessageArray(); //Print the response message. Look up errors in tmr__status_8h.html
+      Serial.print("Unknown error");
     }
   }
 }

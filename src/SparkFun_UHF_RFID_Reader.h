@@ -77,7 +77,7 @@ class RFID
 
     bool begin(Stream &serialPort = Serial); //If user doesn't specify then Serial will be used
 	
-	void enableDebugging(Stream &debuglPort = Serial); //Turn on command sending and response printing. If user doesn't specify then Serial will be used
+	void enableDebugging(Stream &debugPort = Serial); //Turn on command sending and response printing. If user doesn't specify then Serial will be used
 	void disableDebugging(void);
 
     void setBaud(long baudRate);

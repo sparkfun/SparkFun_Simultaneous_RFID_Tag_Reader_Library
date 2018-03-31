@@ -673,7 +673,7 @@ uint8_t RFID::parseResponse(void)
     {
       return (RESPONSE_IS_UNKNOWN);
     }
-    else if (this.msg[1] == 0x0a) //temperature
+    else if (msg[1] == 0x0a) //temperature
     {
         return (RESPONSE_IS_TEMPERATURE);
     }

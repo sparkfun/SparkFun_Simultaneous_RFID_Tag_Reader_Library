@@ -336,10 +336,22 @@ uint8_t RFID::readAccessPW(uint8_t *password, uint8_t &passwordLength, uint16_t 
 }
 
 //Read the unique TID of the tag. Should be 20 bytes long
+//This is a depricated function left in place in case users still use the readTID command
+//This function is actually reading the UID. To read the TID, including the Chip Vendor
+//change the address to 0x00.
 uint8_t RFID::readTID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x02; //Bank for TID,
-  uint8_t address = 0x02; //TID starts at 4
+  uint8_t bank = 0x02; //Bank for TID
+  uint8_t address = 0x02;
+
+  return (readData(bank, address, tid, tidLength, timeOut));
+}
+
+//Read the unique ID of the tag. Can vary from 0 to 20 or more bytes 
+uint8_t RFID::readUID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
+{
+  uint8_t bank = 0x02; //Bank for TID
+  uint8_t address = 0x02; //UID of the TID starts at 4
 
   return (readData(bank, address, tid, tidLength, timeOut));
 }

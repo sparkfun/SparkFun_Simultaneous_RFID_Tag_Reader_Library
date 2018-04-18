@@ -4,12 +4,20 @@
   Date: October 3rd, 2016
   https://github.com/sparkfun/Simultaneous_RFID_Tag_Reader
 
-  Every tag has a unique ID (the TID) that is not editable.
-  There is also the chip vendor ID and model ID for the tag.
+  An example showing how to read the unique ID from a tag.
+  
+  Every tag has a Tag ID (the TID) that is not editable. This memory
+  contains the chip vendor ID and model ID for the tag (24 bits). All tags
+  must have these bits. Almost all tags also include a UID or unique ID
+  in the TID memory area. 
 
-  TIDs are 20 bytes, 160 bits or 1,460,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000 different possible tag IDs
+  UIDs can range in length. We've seen 8 bytes (64 bit) most commonly but some
+  UIDs are 20 bytes, 160 bits or 1,460,000,000,000,000,000,000,000,000,000,000,000,000,000,000,000 
+  different possible unique IDs
 
-  This example shows how to read the tag ID.
+  UIDs can range from 0 to 20 bytes. If the sketch tries to read a UID
+  that is longer than a tag actually has then the read will fail. Start with 8 and increase it
+  if you have a tag with a longer UID.
 */
 
 #include <SoftwareSerial.h> //Used for transmitting to the device
@@ -43,24 +51,24 @@ void setup()
 
 void loop()
 {
-  Serial.println(F("Get one tag near the reader. Press a key to read unique tag ID."));
+  Serial.println(F("Get one tag near the reader. Press a key to read a tag's unique ID."));
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
 
   byte response;
-  byte myTID[20]; //TIDs are 20 bytes
-  byte tidLength = sizeof(myTID);
+  byte myUID[8]; //UIDs can range from 0 to 20 bytes. Start with 8.
+  byte uidLength = sizeof(myUID);
   
   //Read unique ID of tag
-  response = nano.readTID(myTID, tidLength);
+  response = nano.readTID(myUID, uidLength);
   if (response == RESPONSE_SUCCESS)
   {
-    Serial.println("TID read!");
-    Serial.print("TID: [");
-    for(byte x = 0 ; x < tidLength ; x++)
+    Serial.println("UID read!");
+    Serial.print("UID: [");
+    for(byte x = 0 ; x < uidLength ; x++)
     {
-      if(myTID[x] < 0x10) Serial.print("0");
-      Serial.print(myTID[x], HEX);
+      if(myUID[x] < 0x10) Serial.print("0");
+      Serial.print(myUID[x], HEX);
       Serial.print(" ");
     }
     Serial.println("]");

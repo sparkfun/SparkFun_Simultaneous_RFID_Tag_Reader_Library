@@ -68,6 +68,7 @@ readAccessPW	KEYWORD2
 writeAccessPW	KEYWORD2
 
 readTID	KEYWORD2
+readUID	KEYWORD2
 
 killTag	KEYWORD2
 

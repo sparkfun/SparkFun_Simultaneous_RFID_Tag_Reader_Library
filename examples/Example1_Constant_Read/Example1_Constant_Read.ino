@@ -12,8 +12,7 @@
 
 #include <SoftwareSerial.h> //Used for transmitting to the device
 
-//SoftwareSerial softSerial(2, 3); //RX, TX
-SoftwareSerial softSerial(35, 36); //RX, TX - Teensy Testing
+SoftwareSerial softSerial(2, 3); //RX, TX
 
 #include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
 RFID nano; //Create instance
@@ -137,15 +136,6 @@ boolean setupNano(long baudRate)
 
   //Test the connection
   nano.getVersion();
-
-  while (1)
-  {
-    nano.getVersion();
-    Serial.print("msg[0]: 0x");
-    Serial.println(nano.msg[0], HEX);
-    delay(250);
-  }
-
   if (nano.msg[0] != ALL_GOOD) return (false); //Something is not right
 
   //The M6E has these settings no matter what
@@ -155,4 +145,3 @@ boolean setupNano(long baudRate)
 
   return (true); //We are ready to rock
 }
-

@@ -59,7 +59,7 @@ bool RFID::begin(Stream &serialPort)
 void RFID::enableDebugging(Stream &debugPort)
 {
   _debugSerial = &debugPort; //Grab which port the user wants us to use for debugging
-  
+
   _printDebug = true; //Should we print the commands we send? Good for debugging
 }
 void RFID::disableDebugging(void)
@@ -75,7 +75,7 @@ void RFID::setBaud(long baudRate)
   //Copy this setting into a temp data array
   uint8_t size = sizeof(baudRate);
   uint8_t data[size];
-  for (uint8_t x = 0 ; x < size ; x++)
+  for (uint8_t x = 0; x < size; x++)
     data[x] = (uint8_t)(baudRate >> (8 * (size - 1 - x)));
 
   sendMessage(TMR_SR_OPCODE_SET_BAUD_RATE, data, size, COMMAND_TIME_OUT, false);
@@ -215,12 +215,13 @@ void RFID::getVersion(void)
 //1005 = 10.05dBm
 void RFID::setReadPower(int16_t powerSetting)
 {
-  if (powerSetting > 2700) powerSetting = 2700; //Limit to 27dBm
+  if (powerSetting > 2700)
+    powerSetting = 2700; //Limit to 27dBm
 
   //Copy this setting into a temp data array
   uint8_t size = sizeof(powerSetting);
   uint8_t data[size];
-  for (uint8_t x = 0 ; x < size ; x++)
+  for (uint8_t x = 0; x < size; x++)
     data[x] = (uint8_t)(powerSetting >> (8 * (size - 1 - x)));
 
   sendMessage(TMR_SR_OPCODE_SET_READ_TX_POWER, data, size);
@@ -242,7 +243,7 @@ void RFID::setWritePower(int16_t powerSetting)
 {
   uint8_t size = sizeof(powerSetting);
   uint8_t data[size];
-  for (uint8_t x = 0 ; x < size ; x++)
+  for (uint8_t x = 0; x < size; x++)
     data[x] = (uint8_t)(powerSetting >> (8 * (size - 1 - x)));
 
   sendMessage(TMR_SR_OPCODE_SET_WRITE_TX_POWER, data, size);
@@ -261,7 +262,7 @@ void RFID::getWritePower()
 //Caller must provide an array for EPC to be stored in
 uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x01; //User data bank
+  uint8_t bank = 0x01;    //User data bank
   uint8_t address = 0x02; //Starts at 2
 
   return (readData(bank, address, epc, epcLength, timeOut));
@@ -271,9 +272,9 @@ uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
 //Use with caution. This function doesn't control which tag hears the command.
 uint8_t RFID::writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x01; //EPC memory
-  uint8_t address = 0x02; //EPC starts at spot 4
-  uint8_t * nnewID = (uint8_t*)atoi(newID);   // New Line doing the conversion
+  uint8_t bank = 0x01;                      //EPC memory
+  uint8_t address = 0x02;                   //EPC starts at spot 4
+  uint8_t *nnewID = (uint8_t *)atoi(newID); // New Line doing the conversion
 
   return (writeData(bank, address, nnewID, newIDLength, timeOut));
 }
@@ -283,7 +284,7 @@ uint8_t RFID::writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut)
 //TODO Add support for accessPassword
 uint8_t RFID::readUserData(uint8_t *userData, uint8_t &userDataLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x03; //User data bank
+  uint8_t bank = 0x03;    //User data bank
   uint8_t address = 0x00; //Starts at 0
 
   return (readData(bank, address, userData, userDataLength, timeOut));
@@ -303,7 +304,7 @@ uint8_t RFID::writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t 
 //Write the kill password. Should be 4 bytes long
 uint8_t RFID::writeKillPW(uint8_t *password, uint8_t passwordLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x00; //Passwords bank
+  uint8_t bank = 0x00;    //Passwords bank
   uint8_t address = 0x00; //Kill password address
 
   return (writeData(bank, address, password, passwordLength, timeOut));
@@ -312,7 +313,7 @@ uint8_t RFID::writeKillPW(uint8_t *password, uint8_t passwordLength, uint16_t ti
 //Read the kill password. Should be 4 bytes long
 uint8_t RFID::readKillPW(uint8_t *password, uint8_t &passwordLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x00; //Passwords bank
+  uint8_t bank = 0x00;    //Passwords bank
   uint8_t address = 0x00; //Kill password address
 
   return (readData(bank, address, password, passwordLength, timeOut));
@@ -321,7 +322,7 @@ uint8_t RFID::readKillPW(uint8_t *password, uint8_t &passwordLength, uint16_t ti
 //Write the access password. Should be 4 bytes long
 uint8_t RFID::writeAccessPW(uint8_t *password, uint8_t passwordLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x00; //Passwords bank
+  uint8_t bank = 0x00;    //Passwords bank
   uint8_t address = 0x02; //Access password address
 
   return (writeData(bank, address, password, passwordLength, timeOut));
@@ -330,7 +331,7 @@ uint8_t RFID::writeAccessPW(uint8_t *password, uint8_t passwordLength, uint16_t 
 //Read the access password. Should be 4 bytes long
 uint8_t RFID::readAccessPW(uint8_t *password, uint8_t &passwordLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x00; //Passwords bank
+  uint8_t bank = 0x00;    //Passwords bank
   uint8_t address = 0x02; //Access password address
 
   return (readData(bank, address, password, passwordLength, timeOut));
@@ -348,10 +349,10 @@ uint8_t RFID::readTID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
   return (readData(bank, address, tid, tidLength, timeOut));
 }
 
-//Read the unique ID of the tag. Can vary from 0 to 20 or more bytes 
+//Read the unique ID of the tag. Can vary from 0 to 20 or more bytes
 uint8_t RFID::readUID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x02; //Bank for TID
+  uint8_t bank = 0x02;    //Bank for TID
   uint8_t address = 0x02; //UID of the TID starts at 4
 
   return (readData(bank, address, tid, tidLength, timeOut));
@@ -376,11 +377,11 @@ uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, u
 
   //Pre-load array options
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF; //Timeout lsB in ms
-  data[2] = 0x00; //Option initialize
+  data[1] = timeOut & 0xFF;      //Timeout lsB in ms
+  data[2] = 0x00;                //Option initialize
 
   //Splice address into array
-  for (uint8_t x = 0 ; x < sizeof(address) ; x++)
+  for (uint8_t x = 0; x < sizeof(address); x++)
     data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
 
   //Bank 0 = Passwords
@@ -390,7 +391,7 @@ uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, u
   data[7] = bank;
 
   //Splice data into array
-  for (uint8_t x = 0 ; x < dataLengthToRecord ; x++)
+  for (uint8_t x = 0; x < dataLengthToRecord; x++)
     data[8 + x] = dataToRecord[x];
 
   sendMessage(TMR_SR_OPCODE_WRITE_TAG_DATA, data, sizeof(data), timeOut);
@@ -438,19 +439,20 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
 
   //Insert timeout
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF; //Timeout lsB in ms
+  data[1] = timeOut & 0xFF;      //Timeout lsB in ms
 
   data[2] = bank; //Bank
 
   //Splice address into array
-  for (uint8_t x = 0 ; x < sizeof(address) ; x++)
+  for (uint8_t x = 0; x < sizeof(address); x++)
     data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
 
-  data[7] = dataLengthRead / 2; //Number of 16-bit chunks to read. 
+  data[7] = dataLengthRead / 2; //Number of 16-bit chunks to read.
   //0x00 will read the entire bank but may be more than we expect (both Kill and Access PW will be returned when reading bank 1 from address 0)
-  
+
   //When reading the user data area we need to read the entire bank
-  if(bank == 0x03) data[7] = 0x00;
+  if (bank == 0x03)
+    data[7] = 0x00;
 
   sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
 
@@ -465,11 +467,11 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
       if (responseLength < dataLengthRead) //User wants us to read more than we have available
         dataLengthRead = responseLength;
 
-	  //There is a case here where responseLegnth is more than dataLengthRead, in which case we ignore (don't load) the additional bytes
+      //There is a case here where responseLegnth is more than dataLengthRead, in which case we ignore (don't load) the additional bytes
       //Load limited response data into caller's array
-	  for (uint8_t x = 0 ; x < dataLengthRead ; x++)
+      for (uint8_t x = 0; x < dataLengthRead; x++)
         dataRead[x] = msg[5 + x];
-	  
+
       return (RESPONSE_SUCCESS);
     }
   }
@@ -489,11 +491,11 @@ uint8_t RFID::killTag(uint8_t *password, uint8_t passwordLength, uint16_t timeOu
   uint8_t data[4 + passwordLength];
 
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF; //Timeout lsB in ms
-  data[2] = 0x00; //Option initialize
+  data[1] = timeOut & 0xFF;      //Timeout lsB in ms
+  data[2] = 0x00;                //Option initialize
 
   //Splice password into array
-  for (uint8_t x = 0 ; x < passwordLength ; x++)
+  for (uint8_t x = 0; x < passwordLength; x++)
     data[3 + x] = password[x];
 
   data[3 + passwordLength] = 0x00; //RFU
@@ -537,21 +539,20 @@ bool RFID::check()
         //We've got a complete sentence!
 
         //Erase the remainder of the array
-        for (uint8_t x = _head ; x < MAX_MSG_SIZE ; x++)
+        for (uint8_t x = _head; x < MAX_MSG_SIZE; x++)
           msg[x] = 0;
 
         _head = 0; //Reset
-		
-		//Used for debugging: Does the user want us to print the command to serial port?
-		if (_printDebug == true)
-		{
-		  _debugSerial->print(F("response: "));
-		  printMessageArray();
-		}
+
+        //Used for debugging: Does the user want us to print the command to serial port?
+        if (_printDebug == true)
+        {
+          _debugSerial->print(F("response: "));
+          printMessageArray();
+        }
 
         return (true);
       }
-	  
     }
   }
 
@@ -567,7 +568,7 @@ uint8_t RFID::getTagEPCBytes(void)
 
   uint8_t tagDataBytes = getTagDataBytes(); //We need this offset
 
-  for (uint8_t x = 0 ; x < 2 ; x++)
+  for (uint8_t x = 0; x < 2; x++)
     epcBits |= (uint16_t)msg[27 + tagDataBytes + x] << (8 * (1 - x));
   uint8_t epcBytes = epcBits / 8;
   epcBytes -= 4; //Ignore the first two bytes and last two bytes
@@ -582,10 +583,11 @@ uint8_t RFID::getTagDataBytes(void)
 {
   //Number of bits of embedded tag data
   uint8_t tagDataLength = 0;
-  for (uint8_t x = 0 ; x < 2 ; x++)
+  for (uint8_t x = 0; x < 2; x++)
     tagDataLength |= (uint16_t)msg[24 + x] << (8 * (1 - x));
   uint8_t tagDataBytes = tagDataLength / 8;
-  if (tagDataLength % 8 > 0) tagDataBytes++; //Ceiling trick
+  if (tagDataLength % 8 > 0)
+    tagDataBytes++; //Ceiling trick
 
   return (tagDataBytes);
 }
@@ -596,7 +598,7 @@ uint16_t RFID::getTagTimestamp(void)
 {
   //Timestamp since last Keep-Alive message
   uint32_t timeStamp = 0;
-  for (uint8_t x = 0 ; x < 4 ; x++)
+  for (uint8_t x = 0; x < 4; x++)
     timeStamp |= (uint32_t)msg[17 + x] << (8 * (3 - x));
 
   return (timeStamp);
@@ -608,7 +610,7 @@ uint32_t RFID::getTagFreq(void)
 {
   //Frequency of the tag detected is loaded over three bytes
   uint32_t freq = 0;
-  for (uint8_t x = 0 ; x < 3 ; x++)
+  for (uint8_t x = 0; x < 3; x++)
     freq |= (uint32_t)msg[14 + x] << (8 * (2 - x));
 
   return (freq);
@@ -656,7 +658,7 @@ uint8_t RFID::parseResponse(void)
   uint8_t opCode = msg[2];
 
   //Check the CRC on this response
-  uint16_t messageCRC = calculateCRC(&msg[1], msgLength - 3 ); //Ignore header (start spot 1), remove 3 bytes (header + 2 CRC)
+  uint16_t messageCRC = calculateCRC(&msg[1], msgLength - 3); //Ignore header (start spot 1), remove 3 bytes (header + 2 CRC)
   if ((msg[msgLength - 2] != (messageCRC >> 8)) || (msg[msgLength - 1] != (messageCRC & 0xFF)))
   {
     return (ERROR_CORRUPT_RESPONSE);
@@ -670,7 +672,7 @@ uint8_t RFID::parseResponse(void)
       //We have a Read cycle reset/keep-alive message
       //Sent once per second
       uint16_t statusMsg = 0;
-      for (uint8_t x = 0 ; x < 2 ; x++)
+      for (uint8_t x = 0; x < 2; x++)
         statusMsg |= (uint32_t)msg[3 + x] << (8 * (1 - x));
 
       if (statusMsg == 0x0400)
@@ -688,7 +690,7 @@ uint8_t RFID::parseResponse(void)
     }
     else if (msg[1] == 0x0a) //temperature
     {
-        return (RESPONSE_IS_TEMPERATURE);
+      return (RESPONSE_IS_TEMPERATURE);
     }
     else //Full tag record
     {
@@ -700,13 +702,12 @@ uint8_t RFID::parseResponse(void)
   else
   {
     if (_printDebug == true)
-	{
-		_debugSerial->print(F("Unknown opcode in response: 0x"));
-		_debugSerial->println(opCode, HEX);
-	}
+    {
+      _debugSerial->print(F("Unknown opcode in response: 0x"));
+      _debugSerial->println(opCode, HEX);
+    }
     return (ERROR_UNKNOWN_OPCODE);
   }
-
 }
 
 //Given an opcode, a piece of data, and the size of that data, package up a sentence and send it
@@ -716,7 +717,7 @@ void RFID::sendMessage(uint8_t opcode, uint8_t *data, uint8_t size, uint16_t tim
   msg[2] = opcode;
 
   //Copy the data into msg array
-  for (uint8_t x = 0 ; x < size ; x++)
+  for (uint8_t x = 0; x < size; x++)
     msg[3 + x] = data[x];
 
   sendCommand(timeOut, waitForResponse); //Send and wait for response
@@ -745,17 +746,18 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
 
   //Remove anything in the incoming buffer
   //TODO this is a bad idea if we are constantly readings tags
-  while (_nanoSerial->available()) _nanoSerial->read();
+  while (_nanoSerial->available())
+    _nanoSerial->read();
 
   //Send the command to the module
-  for (uint8_t x = 0 ; x < messageLength + 5 ; x++)
+  for (uint8_t x = 0; x < messageLength + 5; x++)
     _nanoSerial->write(msg[x]);
 
   //There are some commands (setBaud) that we can't or don't want the response
   if (waitForResponse == false)
   {
-	_nanoSerial->flush(); //Wait for serial sending to complete
-	return;
+    _nanoSerial->flush(); //Wait for serial sending to complete
+    return;
   }
 
   //For debugging, probably remove
@@ -767,7 +769,8 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   {
     if (millis() - startTime > timeOut)
     {
-      if (_printDebug == true) _debugSerial->println(F("Time out 1: No response from module"));
+      if (_printDebug == true)
+        _debugSerial->println(F("Time out 1: No response from module"));
       msg[0] = ERROR_COMMAND_RESPONSE_TIMEOUT;
       return;
     }
@@ -783,7 +786,8 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   {
     if (millis() - startTime > timeOut)
     {
-      if (_printDebug == true) _debugSerial->println(F("Time out 2: Incomplete response"));
+      if (_printDebug == true)
+        _debugSerial->println(F("Time out 2: Incomplete response"));
 
       msg[0] = ERROR_COMMAND_RESPONSE_TIMEOUT;
       return;
@@ -793,7 +797,7 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
     {
       msg[spot] = _nanoSerial->read();
 
-      if (spot == 1) //Grab the length of this response (spot 1)
+      if (spot == 1)                //Grab the length of this response (spot 1)
         messageLength = msg[1] + 7; //Actual length of response is ? + 7 for extra stuff (header, Length, opcode, 2 status bytes, ..., 2 bytes CRC = 7)
 
       spot++;
@@ -816,7 +820,8 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   if ((msg[messageLength - 2] != (crc >> 8)) || (msg[messageLength - 1] != (crc & 0xFF)))
   {
     msg[0] = ERROR_CORRUPT_RESPONSE;
-    if (_printDebug == true) _debugSerial->println(F("Corrupt response"));
+    if (_printDebug == true)
+      _debugSerial->println(F("Corrupt response"));
     return;
   }
 
@@ -824,32 +829,34 @@ void RFID::sendCommand(uint16_t timeOut, boolean waitForResponse)
   if (msg[2] != opcode)
   {
     msg[0] = ERROR_WRONG_OPCODE_RESPONSE;
-    if (_printDebug == true) _debugSerial->println(F("Wrong opcode response"));
+    if (_printDebug == true)
+      _debugSerial->println(F("Wrong opcode response"));
     return;
   }
 
   //If everything is ok, load all ok into msg array
   msg[0] = ALL_GOOD;
-
 }
 
 //Print the current message array - good for debugging, looking at how the module responded
 //TODO Don't hardcode the serial stream
 void RFID::printMessageArray(void)
 {
-  if(_printDebug == true) //If user hasn't enabled debug we don't know what port to debug to
+  if (_printDebug == true) //If user hasn't enabled debug we don't know what port to debug to
   {
-	uint8_t amtToPrint = msg[1] + 5;
-	if (amtToPrint > MAX_MSG_SIZE) amtToPrint = MAX_MSG_SIZE; //Limit this size
-	  
-	for (uint16_t x = 0 ; x < amtToPrint ; x++)
-	{
-	  _debugSerial->print(" [");
-	  if (msg[x] < 0x10) _debugSerial->print("0");
-	  _debugSerial->print(msg[x], HEX);
-	  _debugSerial->print("]");
-	}
-	_debugSerial->println();
+    uint8_t amtToPrint = msg[1] + 5;
+    if (amtToPrint > MAX_MSG_SIZE)
+      amtToPrint = MAX_MSG_SIZE; //Limit this size
+
+    for (uint16_t x = 0; x < amtToPrint; x++)
+    {
+      _debugSerial->print(" [");
+      if (msg[x] < 0x10)
+        _debugSerial->print("0");
+      _debugSerial->print(msg[x], HEX);
+      _debugSerial->print("]");
+    }
+    _debugSerial->println();
   }
 }
 
@@ -857,11 +864,23 @@ void RFID::printMessageArray(void)
 //ThingMagic-mutated CRC used for messages.
 //Notably, not a CCITT CRC-16, though it looks close.
 static uint16_t crctable[] =
-{
-  0x0000, 0x1021, 0x2042, 0x3063,
-  0x4084, 0x50a5, 0x60c6, 0x70e7,
-  0x8108, 0x9129, 0xa14a, 0xb16b,
-  0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
+    {
+        0x0000,
+        0x1021,
+        0x2042,
+        0x3063,
+        0x4084,
+        0x50a5,
+        0x60c6,
+        0x70e7,
+        0x8108,
+        0x9129,
+        0xa14a,
+        0xb16b,
+        0xc18c,
+        0xd1ad,
+        0xe1ce,
+        0xf1ef,
 };
 
 //Calculates the magical CRC value
@@ -869,7 +888,7 @@ uint16_t RFID::calculateCRC(uint8_t *u8Buf, uint8_t len)
 {
   uint16_t crc = 0xFFFF;
 
-  for (uint8_t i = 0 ; i < len ; i++)
+  for (uint8_t i = 0; i < len; i++)
   {
     crc = ((crc << 4) | (u8Buf[i] >> 4)) ^ crctable[crc >> 12];
     crc = ((crc << 4) | (u8Buf[i] & 0x0F)) ^ crctable[crc >> 12];

@@ -7,6 +7,10 @@ SparkFun Simultaneous RFID Tag Reader Library
 
 This is a powerful shield capable of reading multiple RFID tags at the same time. It can also write to tags. Works with UHF Gen2 RFID tags.
 
+Thanks to:
+
+* paulvha on forums for finding and recommending [fix for writeEPC bug](https://forum.sparkfun.com/viewtopic.php?f=118&t=49574&start=15)
+
 Repository Contents
 -------------------
 

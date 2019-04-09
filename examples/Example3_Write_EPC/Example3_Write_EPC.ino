@@ -45,15 +45,16 @@ void setup()
 void loop()
 {
   Serial.println(F("Get all tags out of the area. Press a key to write EPC to first detected tag."));
+  if (Serial.available()) Serial.read(); //Clear any chars in the incoming buffer (like a newline char)
   while (!Serial.available()); //Wait for user to send a character
   Serial.read(); //Throw away the user's character
 
   //"Hello" Does not work. "Hell" will be recorded. You can only write even number of bytes
-  char stringEPC[] = "Hello!"; //You can only write even number of bytes
-  byte responseType = nano.writeTagEPC(stringEPC, sizeof(stringEPC) - 1); //The -1 shaves off the \0 found at the end of string
+  //char stringEPC[] = "Hello!"; //You can only write even number of bytes
+  //byte responseType = nano.writeTagEPC(stringEPC, sizeof(stringEPC) - 1); //The -1 shaves off the \0 found at the end of string
 
-  //char hexEPC[] = {0xFF, 0x2D, 0x03, 0x54}; //You can only write even number of bytes
-  //byte response = nano.writeTagEPC(hexEPC, sizeof(hexEPC));
+  char hexEPC[] = {0xFF, 0x2D, 0x03, 0x54}; //You can only write even number of bytes
+  byte responseType = nano.writeTagEPC(hexEPC, sizeof(hexEPC));
 
   if (responseType == RESPONSE_SUCCESS)
     Serial.println("New EPC Written!");
@@ -70,11 +71,11 @@ boolean setupNano(long baudRate)
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
-  while(!softSerial); //Wait for port to open
+  while (!softSerial); //Wait for port to open
 
   //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
-  while(softSerial.available()) softSerial.read();
-  
+  while (softSerial.available()) softSerial.read();
+
   nano.getVersion();
 
   if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)
@@ -107,5 +108,3 @@ boolean setupNano(long baudRate)
 
   return (true); //We are ready to rock
 }
-
-

@@ -272,11 +272,10 @@ uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
 //Use with caution. This function doesn't control which tag hears the command.
 uint8_t RFID::writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut)
 {
-  uint8_t bank = 0x01;                      //EPC memory
-  uint8_t address = 0x02;                   //EPC starts at spot 4
-  uint8_t *nnewID = (uint8_t *)atoi(newID); // New Line doing the conversion
+  uint8_t bank = 0x01;    //EPC memory
+  uint8_t address = 0x02; //EPC starts at spot 4
 
-  return (writeData(bank, address, nnewID, newIDLength, timeOut));
+  return (writeData(bank, address, (uint8_t *)newID, newIDLength, timeOut));
 }
 
 //This reads the user data area of the tag. 0 to 64 bytes are normally available.

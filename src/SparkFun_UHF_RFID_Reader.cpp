@@ -141,10 +141,11 @@ void RFID::setAntennaPort(void)
 
 //This was found in the logs. It seems to be very close to setAntennaPort
 //Search serial_reader_l3.c for cmdSetAntennaSearchList for more info
+//To use ThingMagic Micro M6E with two antennas uncomment commented line and call this function instead of setAntennaPort
 void RFID::setAntennaSearchList(void)
 {
   uint8_t configBlob[] = {0x02, 0x01, 0x01}; //logical antenna list option, TX port = 1, RX port = 1
-  //uint8_t configBlob[] = {0x02, 0x01, 0x01, 0x02, 0x02}; //Set antenna number when using ThingMagic Micro M6E with two antenna ports. To use ThingMagic Micro M6E with two antennas call this function instead of setAntennaPort
+  //uint8_t configBlob[] = {0x02, 0x01, 0x01, 0x02, 0x02}; //Set antenna number when using ThingMagic Micro M6E with two antenna ports.
   sendMessage(TMR_SR_OPCODE_SET_ANTENNA_PORT, configBlob, sizeof(configBlob));
 }
 

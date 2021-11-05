@@ -144,6 +144,7 @@ void RFID::setAntennaPort(void)
 void RFID::setAntennaSearchList(void)
 {
   uint8_t configBlob[] = {0x02, 0x01, 0x01}; //logical antenna list option, TX port = 1, RX port = 1
+  //uint8_t configBlob[] = {0x02, 0x01, 0x01, 0x02, 0x02}; //Set antenna number when using ThingMagic Micro M6E with two antenna ports
   sendMessage(TMR_SR_OPCODE_SET_ANTENNA_PORT, configBlob, sizeof(configBlob));
 }
 
@@ -620,6 +621,19 @@ uint32_t RFID::getTagFreq(void)
 int8_t RFID::getTagRSSI(void)
 {
   return (msg[12] - 256);
+}
+
+//Get antenna number when using ThingMagic Micro M6E with two antenna ports
+int8_t RFID::getAntennaNo(void)
+{
+  if (msg[13] == 17)
+  {
+    return 1;
+  }
+  else if (msg[13] == 34)
+  {
+    return 2;
+  }
 }
 
 //This will parse whatever response is currently in msg into its constituents

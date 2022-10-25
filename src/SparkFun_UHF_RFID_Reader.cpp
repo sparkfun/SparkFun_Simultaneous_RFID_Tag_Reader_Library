@@ -116,6 +116,50 @@ void RFID::stopReading()
   sendMessage(TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP, configBlob, sizeof(configBlob), false); //Do not wait for response
 }
 
+// Set one of the GPIO pins as INPUT or OUTPUT
+void RFID::pinMode(uint8_t pin, uint8_t mode)
+{
+  // {option flag, pin number, pin mode, pin state}
+  uint8_t data[] = {1, pin, mode, 0};
+  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, false);
+}
+
+// For a pin configured as an OUTPUT, this sets that pin state HIGH or LOW
+void RFID::digitalWrite(uint8_t pin, uint8_t state)
+{
+  // {pin number, pin state}
+  uint8_t data[] = {pin, state};
+  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, false);
+}
+
+// For a pin configured as an INPUT, this returns that pin's state (HIGH/LOW)
+bool RFID::digitalRead(uint8_t pin)
+{
+  // Send command to get current GPIO inputs, and wait for response
+  uint8_t data[] = {1};
+  sendMessage(TMR_SR_OPCODE_GET_USER_GPIO_INPUTS, data, sizeof(data), COMMAND_TIME_OUT, true);
+  
+  // Got response, parse the returned message
+  uint8_t len = msg[1] - 1; // Number of bytes in message after offset
+  uint8_t offset = 6; // Relevant data is offset by 6 bytes
+
+  // Data is stored in sets of 3 bytes for each pin, where the first byte is the
+  // pin number, second is the pin mode, and third is the pin state
+  for(int i = 0; i < len; i += 3)
+  {
+    // Check if this is the requested pin
+    if(msg[i + offset] == pin)
+    {
+      // Return this pin's state
+      return msg[i + offset + 2];
+    }
+  }
+
+  // Requested pin was not in message
+  return false;
+}
+
+
 //Given a region, set the correct freq
 //0x04 = IN
 //0x05 = JP

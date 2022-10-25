@@ -31,6 +31,7 @@
 #define TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP 0x2F
 #define TMR_SR_OPCODE_GET_READ_TX_POWER 0x62
 #define TMR_SR_OPCODE_GET_WRITE_TX_POWER 0x64
+#define TMR_SR_OPCODE_GET_USER_GPIO_INPUTS 0x66
 #define TMR_SR_OPCODE_GET_POWER_MODE 0x68
 #define TMR_SR_OPCODE_GET_READER_OPTIONAL_PARAMS 0x6A
 #define TMR_SR_OPCODE_GET_PROTOCOL_PARAM 0x6B
@@ -38,6 +39,7 @@
 #define TMR_SR_OPCODE_SET_TAG_PROTOCOL 0x93
 #define TMR_SR_OPCODE_SET_READ_TX_POWER 0x92
 #define TMR_SR_OPCODE_SET_WRITE_TX_POWER 0x94
+#define TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS 0x96
 #define TMR_SR_OPCODE_SET_REGION 0x97
 #define TMR_SR_OPCODE_SET_READER_OPTIONAL_PARAMS 0x9A
 #define TMR_SR_OPCODE_SET_PROTOCOL_PARAM 0x9B
@@ -93,6 +95,10 @@ public:
 
   void startReading(void); //Disable filtering and start reading continuously
   void stopReading(void);  //Stops continuous read. Give 1000 to 2000ms for the module to stop reading.
+
+  void pinMode(uint8_t pin, uint8_t mode);
+  void digitalWrite(uint8_t pin, uint8_t state);
+  bool digitalRead(uint8_t pin);
 
   void enableReadFilter(void);
   void disableReadFilter(void);

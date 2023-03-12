@@ -47,7 +47,7 @@ RFID::RFID(void)
 }
 
 //Initialize the Serial port
-bool RFID::begin(Stream &serialPort)
+void RFID::begin(Stream &serialPort)
 {
   _nanoSerial = &serialPort; //Grab which port the user wants us to use
 
@@ -751,6 +751,7 @@ uint8_t RFID::parseResponse(void)
     }
     return (ERROR_UNKNOWN_OPCODE);
   }
+  return (ERROR_UNKNOWN_OPCODE);
 }
 
 //Given an opcode, a piece of data, and the size of that data, package up a sentence and send it

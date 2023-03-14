@@ -11,6 +11,8 @@ Thanks to:
 
 * paulvha on forums for finding and recommending [fix for writeEPC bug](https://forum.sparkfun.com/viewtopic.php?f=118&t=49574&start=15)
 
+Note - Most examples make use of [SoftwareSerial](https://docs.arduino.cc/learn/built-in-libraries/software-serial), which is not included in all platform cores. If you run into compilation errors due to this, you'll need to install an appropriate library for your platform (eg. [ESPSoftwareSerial](https://github.com/plerup/espsoftwareserial/) for ESP32), or replace `softSerial` in the examples with something that works for your platform (eg. `Serial2` for ESP32 or `Serial5` for teensy, see Advanced Example1).
+
 Repository Contents
 -------------------
 

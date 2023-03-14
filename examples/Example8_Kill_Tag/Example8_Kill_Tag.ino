@@ -12,7 +12,9 @@
   This shows how to send the right command (with password) to disable a tag.
 */
 
-#include <SoftwareSerial.h> //Used for transmitting to the device
+//Used for transmitting to the device
+//If you run into compilation errors regarding this include, see the README
+#include <SoftwareSerial.h>
 
 SoftwareSerial softSerial(2, 3); //RX, TX
 

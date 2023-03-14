@@ -13,7 +13,9 @@
   User data is a good place to write things like the milk's best by date
 */
 
-#include <SoftwareSerial.h> //Used for transmitting to the device
+//Used for transmitting to the device
+//If you run into compilation errors regarding this include, see the README
+#include <SoftwareSerial.h>
 
 SoftwareSerial softSerial(2, 3); //RX, TX
 

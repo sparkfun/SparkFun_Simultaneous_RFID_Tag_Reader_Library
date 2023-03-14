@@ -47,7 +47,7 @@ RFID::RFID(void)
 }
 
 //Initialize the Serial port
-bool RFID::begin(Stream &serialPort)
+void RFID::begin(Stream &serialPort)
 {
   _nanoSerial = &serialPort; //Grab which port the user wants us to use
 
@@ -725,6 +725,10 @@ uint8_t RFID::parseResponse(void)
       else if (statusMsg == 0x0504)
       {
         return (RESPONSE_IS_TEMPTHROTTLE);
+      }
+      else
+      {
+        return (RESPONSE_IS_UNKNOWN);
       }
     }
     else if (msg[1] == 0x08) //Unknown

@@ -62,6 +62,7 @@
 #define RESPONSE_FAIL 12
 
 //Define the allowed regions - these set the internal freq of the module
+#define REGION_NORTHAMERICA 0x01
 #define REGION_INDIA 0x04
 #define REGION_JAPAN 0x05
 #define REGION_CHINA 0x06
@@ -69,15 +70,23 @@
 #define REGION_KOREA 0x09
 #define REGION_AUSTRALIA 0x0B
 #define REGION_NEWZEALAND 0x0C
-#define REGION_NORTHAMERICA 0x0D
+#define REGION_NORTHAMERICA2 0x0D
+#define REGION_NORTHAMERICA3 0x0E
 #define REGION_OPEN 0xFF
+
+// Enum for different modules
+typedef enum
+{
+  ThingMagic_M6E_NANO,
+  ThingMagic_M7E_HECTO,
+} ThingMagic_Module_t;
 
 class RFID
 {
 public:
   RFID(void);
 
-  void begin(Stream &serialPort = Serial); //If user doesn't specify then Serial will be used
+  void begin(Stream &serialPort = Serial, ThingMagic_Module_t moduleType = ThingMagic_M6E_NANO); //If user doesn't specify then Serial will be used
 
   void enableDebugging(Stream &debugPort = Serial); //Turn on command sending and response printing. If user doesn't specify then Serial will be used
   void disableDebugging(void);
@@ -164,4 +173,6 @@ private:
   uint8_t _head = 0; //Tracks the length of the incoming message as we poll the software serial
 
   boolean _printDebug = false; //Flag to print the serial commands we are sending to the Serial port for debug
+
+  ThingMagic_Module_t _moduleType;
 };

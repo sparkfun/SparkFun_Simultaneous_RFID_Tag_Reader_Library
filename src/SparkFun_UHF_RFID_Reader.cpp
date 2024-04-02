@@ -47,11 +47,13 @@ RFID::RFID(void)
 }
 
 //Initialize the Serial port
-void RFID::begin(Stream &serialPort)
+void RFID::begin(Stream &serialPort, ThingMagic_Module_t moduleType)
 {
   _nanoSerial = &serialPort; //Grab which port the user wants us to use
 
   //_nanoSerial->begin(); //Stream has no .begin() so the user has to do a whateverSerial.begin(xxxx); from setup()
+
+  _moduleType = moduleType; //Save the module type for later
 }
 
 //Enable or disable the printing of sent/response HEX values.
@@ -172,6 +174,17 @@ bool RFID::digitalRead(uint8_t pin)
 //0xFF = OPEN
 void RFID::setRegion(uint8_t region)
 {
+  // There are multiple North American regions, inlcuding NA, NA2, and NA3. A
+  // previous version of this library was written only for the M6E Nano, which
+  // only supports NA2 and NA3, and the macro REGION_NORTHAMERICA was defined
+  // or NA2. This version now defines the macro as NA, so for backwards
+  // compatibility, we need to change the region if the module doesn't support NA
+  if(region == REGION_NORTHAMERICA)
+  {
+    if(_moduleType == ThingMagic_M6E_NANO)
+      region = REGION_NORTHAMERICA2;
+  }
+
   sendMessage(TMR_SR_OPCODE_SET_REGION, &region, sizeof(region));
 }
 

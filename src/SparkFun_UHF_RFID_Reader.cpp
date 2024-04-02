@@ -739,6 +739,10 @@ uint8_t RFID::parseResponse(void)
       {
         return (RESPONSE_IS_TEMPTHROTTLE);
       }
+      else if (statusMsg == 0x0505)
+      {
+        return (RESPONSE_IS_HIGHRETURNLOSS);
+      }
       else
       {
         return (RESPONSE_IS_UNKNOWN);

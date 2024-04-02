@@ -60,6 +60,7 @@
 #define RESPONSE_IS_UNKNOWN 10
 #define RESPONSE_SUCCESS 11
 #define RESPONSE_FAIL 12
+#define RESPONSE_IS_HIGHRETURNLOSS 13
 
 //Define the allowed regions - these set the internal freq of the module
 #define REGION_NORTHAMERICA 0x01

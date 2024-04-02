@@ -91,10 +91,14 @@ void loop()
     {
       Serial.println("Bad CRC");
     }
+    else if (responseType == RESPONSE_IS_HIGHRETURNLOSS)
+    {
+      Serial.println("High return loss, check antenna!");
+    }
     else
     {
       //Unknown response
-      Serial.print("Unknown error");
+      Serial.println("Unknown error");
     }
   }
 }

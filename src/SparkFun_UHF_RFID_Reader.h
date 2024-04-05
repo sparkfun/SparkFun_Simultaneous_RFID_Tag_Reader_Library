@@ -82,6 +82,12 @@ typedef enum
   ThingMagic_M7E_HECTO,
 } ThingMagic_Module_t;
 
+typedef enum
+{
+  ThingMagic_PinMode_INPUT = 0,
+  ThingMagic_PinMode_OUTPUT = 1
+} ThingMagic_PinMode_t;
+
 class RFID
 {
 public:
@@ -106,7 +112,7 @@ public:
   void startReading(void); //Disable filtering and start reading continuously
   void stopReading(void);  //Stops continuous read. Give 1000 to 2000ms for the module to stop reading.
 
-  void pinMode(uint8_t pin, uint8_t mode);
+  void pinMode(uint8_t pin, ThingMagic_PinMode_t mode);
   void digitalWrite(uint8_t pin, uint8_t state);
   bool digitalRead(uint8_t pin);
 

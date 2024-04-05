@@ -119,11 +119,11 @@ void RFID::stopReading()
 }
 
 // Set one of the GPIO pins as INPUT or OUTPUT
-void RFID::pinMode(uint8_t pin, uint8_t mode)
+void RFID::pinMode(uint8_t pin, ThingMagic_PinMode_t mode)
 {
   // {option flag, pin number, pin mode, pin state}
   uint8_t data[] = {1, pin, mode, 0};
-  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, false);
+  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, true);
 }
 
 // For a pin configured as an OUTPUT, this sets that pin state HIGH or LOW
@@ -131,7 +131,7 @@ void RFID::digitalWrite(uint8_t pin, uint8_t state)
 {
   // {pin number, pin state}
   uint8_t data[] = {pin, state};
-  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, false);
+  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, true);
 }
 
 // For a pin configured as an INPUT, this returns that pin's state (HIGH/LOW)

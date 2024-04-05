@@ -37,8 +37,8 @@ void setup()
   Serial.println(F("Module connected!"));
 
   // Set each pin to the appropriate state
-  nano.pinMode(inputPin, INPUT);
-  nano.pinMode(outputPin, OUTPUT);
+  rfidModule.pinMode(inputPin, ThingMagic_PinMode_INPUT);
+  rfidModule.pinMode(outputPin, ThingMagic_PinMode_OUTPUT);
 }
 
 void loop()

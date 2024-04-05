@@ -128,12 +128,12 @@ void loop()
 //Because Stream does not have a .begin() we have to do this outside the library
 boolean setupRfidModule(long baudRate)
 {
-  rfidModule.begin(rfidSerial, moduleType); //Tell the library to communicate over software serial port
+  rfidModule.begin(rfidSerial, moduleType); //Tell the library to communicate over serial port
 
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
   rfidSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
-  // while (rfidSerial.isListening() == false); //Wait for port to open
+  delay(100); //Wait for port to open
 
   //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
   while (rfidSerial.available()) rfidSerial.read();
@@ -152,11 +152,11 @@ boolean setupRfidModule(long baudRate)
   else
   {
     //The module did not respond so assume it's just been powered on and communicating at 115200bps
-    rfidSerial.begin(115200); //Start software serial at 115200
+    rfidSerial.begin(115200); //Start serial at 115200
 
     rfidModule.setBaud(baudRate); //Tell the module to go to the chosen baud rate. Ignore the response msg
 
-    rfidSerial.begin(baudRate); //Start the software serial port, this time at user's chosen baud rate
+    rfidSerial.begin(baudRate); //Start the serial port, this time at user's chosen baud rate
 
     delay(250);
   }
@@ -165,7 +165,7 @@ boolean setupRfidModule(long baudRate)
   rfidModule.getVersion();
   if (rfidModule.msg[0] != ALL_GOOD) return (false); //Something is not right
 
-  //The M6E has these settings no matter what
+  //The module has these settings no matter what
   rfidModule.setTagProtocol(); //Set protocol to GEN2
 
   rfidModule.setAntennaPort(); //Set TX/RX antenna ports to 1

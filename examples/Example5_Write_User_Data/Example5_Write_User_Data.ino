@@ -74,7 +74,7 @@ void loop()
   Serial.read(); //Throw away the user's character
 
   //"Hello" is recorded as "Hell". You can only write even number of bytes
-  char testData[] = "ACBD"; //You can only write even number of bytes
+  uint8_t testData[] = "ACBD"; //You can only write even number of bytes
   byte responseType = rfidModule.writeUserData(testData, sizeof(testData) - 1); //The -1 shaves off the \0 found at the end of string
 
   if (responseType == RESPONSE_SUCCESS)

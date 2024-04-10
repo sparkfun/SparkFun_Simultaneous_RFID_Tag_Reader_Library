@@ -86,7 +86,8 @@ boolean setupRfidModule(long baudRate)
   delay(100); //Wait for port to open
 
   //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
-  while(rfidSerial.available()) rfidSerial.read();
+  while (rfidSerial.available())
+    rfidSerial.read();
 
   rfidModule.getVersion();
 
@@ -113,12 +114,13 @@ boolean setupRfidModule(long baudRate)
 
   //Test the connection
   rfidModule.getVersion();
-  if (rfidModule.msg[0] != ALL_GOOD) return (false); //Something is not right
+  if (rfidModule.msg[0] != ALL_GOOD)
+    return false; //Something is not right
 
   //The module has these settings no matter what
   rfidModule.setTagProtocol(); //Set protocol to GEN2
 
   rfidModule.setAntennaPort(); //Set TX/RX antenna ports to 1
 
-  return (true); //We are ready to rock
+  return true; //We are ready to rock
 }

@@ -179,11 +179,8 @@ void RFID::setRegion(uint8_t region)
   // only supports NA2 and NA3, and the macro REGION_NORTHAMERICA was defined
   // for NA2. This version now defines the macro as NA, so for backwards
   // compatibility, we need to change the region to NA2 if it's the M6E
-  if(region == REGION_NORTHAMERICA)
-  {
-    if(_moduleType == ThingMagic_M6E_NANO)
+  if(region == REGION_NORTHAMERICA && _moduleType == ThingMagic_M6E_NANO)
       region = REGION_NORTHAMERICA2;
-  }
 
   sendMessage(TMR_SR_OPCODE_SET_REGION, &region, sizeof(region));
 }

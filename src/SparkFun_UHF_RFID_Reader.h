@@ -72,6 +72,64 @@
 #define REGION_NORTHAMERICA 0x0D
 #define REGION_OPEN 0xFF
 
+//Taken from serial_reader_imp.h : TMR_SR_Gen2SingulationOptions enum
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_DISABLED 0x00
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC 0x01
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_TID 0x02
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_USER_MEM 0x03
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_ADDRESSED_EPC 0x04
+#define TMR_SR_GEN2_SINGULATION_OPTION_USE_PASSWORD 0x05
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_LENGTH_OF_EPC 0x06
+#define TMR_SR_GEN2_SINGULATION_OPTION_SELECT_GEN2TRUNCATE 0x07
+#define TMR_SR_GEN2_SINGULATION_OPTION_INVERSE_SELECT_BIT 0x08
+#define TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA 0x10
+#define TMR_SR_GEN2_SINGULATION_OPTION_EXTENDED_DATA_LENGTH 0x20
+#define TMR_SR_GEN2_SINGULATION_OPTION_SECURE_READ_DATA 0x40
+
+//Taken from tmr_gen2.h : TMR_GEN2_Bank enum
+#define TMR_GEN2_BANK_RESERVED 0x0
+#define TMR_GEN2_BANK_EPC 0x1
+#define TMR_GEN2_BANK_TID 0x2
+#define TMR_GEN2_BANK_USER 0x3
+#define TMR_GEN2_BANK_RESERVED_ENABLED 0x4
+#define TMR_GEN2_EPC_LENGTH_FILTER 0x6
+#define TMR_GEN2_EPC_TRUNCATE 0x7
+#define TMR_GEN2_BANK_EPC_ENABLED 0x8
+#define TMR_GEN2_BANK_EPC_NO_PROTOCOL 0x09 // added bank --> for generic filters (non GEN2)
+#define TMR_GEN2_BANK_TID_ENABLED 0x10
+#define TMR_GEN2_BANK_USER_ENABLED 0x20
+
+uint8_t *data, uint8_t *i, uint8_t *type, uint32_t password, uint32_t start, uint8_t filterDataBitLength, 
+  uint8_t *filterData, uint8_t target, uint8_t action, bool inverse, bool read, bool multiselect, bool secure
+
+// define a TagFilter to make code a bit more readable
+typedef struct TagFilter
+{
+  uint8_t type;
+  uint32_t password;
+  uint32_t start;
+  uint8_t filterDataBitLength;
+  uint8_t *filterData;
+  uint8_t target;
+  uint8_t action;
+  bool inverse;
+  bool read;
+  bool multiselect;
+  bool secure;
+ } TagFilter;
+
+ // define a ReadConfig to make code more readable
+ typedef struct ReadConfig 
+ {
+   uint16_t searchFlag;
+   uint16_t metadataFlag;
+   bool continuous;
+   uint16_t offtime;
+   uint16_t streamStats;
+   bool readNTags;
+   uint16_t N;
+ } ReadConfig;
+
 class RFID
 {
 public:

@@ -84,15 +84,28 @@ void RFID::setBaud(long baudRate)
 //Begin scanning for tags
 //There are many many options and features to the nano, this sets options
 //for continuous read of GEN2 type tags
-void RFID::startReading()
+void RFID::startReading(uint16_t offtime, struct TagFilter &filter)
 {
-  disableReadFilter(); //Don't filter for a specific tag, read all tags
+  //Constructing message should not take too much resources, since it is only done once
+  uint8_t i = 0, plen;
+  uint8_t data[MAX_MSG_SIZE];
+  data[i++] = 0x00; // 
+  data[i++] = 0x00; // timeout(2)
+  data[i++] = 0x01; // option byte (no metadata)
+  data[i++] = 0x22; // READ_TAG_ID_MULTIPLE
+  data[i++] = 0x00;
+  data[i++] = 0x00; // search flags(2)
+  data[i++] = 0x05; // Gen2 protocol
+  plen = i;
+  data[i++] = 0x07; // preamble length of 7
+  ReadConfig readConfig = initReadConfig();
+  constructReadTagIdMultipleMsg(data, i, readConfig);
 
   //This blob was found by using the 'Transport Logs' option from the Universal Reader Assistant
   //And connecting the Nano eval kit from Thing Magic to the URA
   //A lot of it has been deciphered but it's easier and faster just to pass a blob than to
   //assemble every option and sub-opcode.
-  uint8_t configBlob[] = {0x00, 0x00, 0x01, 0x22, 0x00, 0x00, 0x05, 0x07, 0x22, 0x10, 0x00, 0x1B, 0x03, 0xE8, 0x01, 0xFF};
+  //uint8_t configBlob[] = {0x00, 0x00, 0x01, 0x22, 0x00, 0x00, 0x05, 0x07, 0x22, 0x10, 0x00, 0x1B, 0x03, 0xE8, 0x01, 0xFF};
 
   /*
     //Timeout should be zero for true continuous reading
@@ -401,104 +414,229 @@ uint8_t RFID::readUID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
   return (readData(bank, address, tid, tidLength, timeOut));
 }
 
-//Writes a data array to a given bank and address
-//Allows for writing of passwords and user data
-//TODO Add support for accessPassword
-//TODO Add support for writing to specific tag
-uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut)
+//Writes EPC without a filter(so the first tag that becomes available)
+uint8_t RFID::writeEPCData(uint8_t bank, uint32_t address, uint8_t *newEPC, uint8_t newEPCLength, uint16_t timeOut)
 {
-  //Example: FF  0A  24  03  E8  00  00  00  00  00  03  00  EE  58  9D
-  //FF 0A 24 = Header, LEN, Opcode
-  //03 E8 = Timeout in ms
-  //00 = Option initialize
-  //00 00 00 00 = Address
-  //03 = Bank
-  //00 EE = Data
-  //58 9D = CRC
-
-  uint8_t data[8 + dataLengthToRecord];
-
-  //Pre-load array options
-  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF;      //Timeout lsB in ms
-  data[2] = 0x00;                //Option initialize
-
-  //Splice address into array
-  for (uint8_t x = 0; x < sizeof(address); x++)
-    data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
-
-  //Bank 0 = Passwords
-  //Bank 1 = EPC Memory Bank
-  //Bank 2 = TID
-  //Bank 3 = User Memory
-  data[7] = bank;
-
-  //Splice data into array
-  for (uint8_t x = 0; x < dataLengthToRecord; x++)
-    data[8 + x] = dataToRecord[x];
-
-  sendMessage(TMR_SR_OPCODE_WRITE_TAG_DATA, data, sizeof(data), timeOut);
-
-  if (msg[0] == ALL_GOOD) //We received a good response
-  {
-    uint16_t status = (msg[3] << 8) | msg[4];
-
-    if (status == 0x0000)
-      return (RESPONSE_SUCCESS);
-  }
-
-  //Else - msg[0] was timeout or other
-  return (RESPONSE_FAIL);
+  return writeEPCData(bank, address, newEPC, newEPCLength, timeOut, NULL, 0);
 }
 
-//Reads a given bank and address to a data array
-//Allows for writing of passwords and user data
-//TODO Add support for accessPassword
-//TODO Add support for writing to specific tag
-uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut)
+/** struct initializers **/
+
+// Initialize a ReadConfig struct
+TagFilter RFID::initReadConfig(uint16_t searchFlag, uint16_t metadataFlag, bool continuous=false, uint16_t offtime=0, uint16_t streamStats=0, bool readNTags=false, uint16_t N=0) 
 {
-  //Bank 0
-  //response: [00] [08] [28] [00] [00] [EE] [FF] [11] [22] [12] [34] [56] [78]
-  //[EE] [FF] [11] [22] = Kill pw
-  //[12] [34] [56] [78] = Access pw
+  return ReadConfig{searchFlag, metadataFlag, continuous, offtime, streamStats, readNTags, N};
+}
 
-  //Bank 1
-  //response: [00] [08] [28] [00] [00] [28] [F0] [14] [00] [AA] [BB] [CC] [DD]
-  //[28] [F0] = CRC
-  //[14] [00] = PC
-  //[AA] [BB] [CC] [DD] = EPC
+// Initialize a TagFilter struct
+TagFilter RFID::initTagFilter(uint8_t type, uint32_t password, uint32_t start, uint8_t filterDataBitLength, 
+  uint8_t *filterData, uint8_t target=0x04, uint8_t action=0x00, bool inverse=false, bool multiselect=false, bool secure=false) 
+{
+  return TagFilter{type, password, start, filterDataBitLength, filterData, target, action, inverse, multiselect, secure};
+}
 
-  //Bank 2
-  //response: [00] [18] [28] [00] [00] [E2] [00] [34] [12] [01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [6B] [00] [05] [5F] [FB] [FF] [FF] [DC] [00]
-  //[E2] = CIsID
-  //[00] [34] [12] = Vendor ID = 003, Model ID == 412
-  //[01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [69] [10] [05] [5F] [FB] [FF] [FF] [DC] [00] = Unique ID (TID)
+/** message constructors **/
 
-  //Bank 3
-  //response: [00] [40] [28] [00] [00] [41] [43] [42] [44] [45] [46] [00] [00] [00] [00] [00] [00] ...
-  //User data
+//Creates a filter that can be used for reading and writing
+//Supports all types of filters(see the Universal Reader Assistant for more details) with exception of MultiFilters
+//Check out the filterbytes function in serial_reader_l3.c:4489 (mercury API) for more details
+//MultiSelect and password are always enabled
+//Unknown support for SecureAccess(don't know what it does)
+//Returns the right option based on the type and wether or not it was inversed
+uint8_t RFID::constructFilterMsg(uint8_t *data, uint8_t &i, struct TagFilter &filter) 
+{
+  uint8_t option = filter.type;
+  // always add a password (default 0x00000000)
+  for (uint8_t x = 0; x < sizeof(filter->password); x++)
+    data[i++] = filter->password >> (8 * (3 - x)) & 0xFF;    
 
-  uint8_t data[8];
+  // GEN2 filters
+  if(filter->type == TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC)
+  {
+    data[i++] = filter->filterDataBitLength;
+    for (uint8_t x = 0; x < (filter->filterDataBitLength >> 3); x++)
+      data[i++] = filter->filterData[x];
+  }
+  else
+  {
+    if(filter->type == TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_ADDRESSED_EPC || filter->type == TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_TID || 
+      filter->type == TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_USER_MEM || filter->type == TMR_SR_GEN2_SINGULATION_OPTION_SELECT_GEN2TRUNCATE)
+    {
+      // set start address
+      for (uint8_t x = 0; x < sizeof(filter->start); x++)
+        data[i++] = filter->start >> (8 * (3 - x)) & 0xFF;
+      data[i++] = filter->filterDataBitLength;
+      for (uint8_t x = 0; x < (((filter->filterDataBitLength - 1) >> 3) + 1); x++)
+        data[i++] = filter->filterData[x];
+    }
+    // GEN2 length filter
+    else if(filter->type == TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_LENGTH_OF_EPC)
+    {
+      data[i++] = (filter->filterDataBitLength >> 8) & 0xFF;
+      data[i++] = filter->filterDataBitLength >> & 0xFF;
+    }
+    // seems to be on most of the time
+    if(filter->multiselect)
+    {
+      data[i++] = filter->target;
+      data[i++] = filter->action;
+      data[i++] = 0x00;
+    }
+  }
+  // change the type
+  if(filter->inverse)
+  {
+    option |= TMR_SR_GEN2_SINGULATION_OPTION_INVERSE_SELECT_BIT;
+  }
+  // not sure what this option does!
+  if(filter->secure)
+  {
+    option |= TMR_SR_GEN2_SINGULATION_OPTION_SECURE_READ_DATA;
+  }
+  return option;
+}
+
+
+//Creates a message for the 0x22 (READ_TAG_ID_MULTIPLE) opcode
+void constructReadTagIdMultipleMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut, ReadConfig &readConfig, struct TagFilter &filter)
+{
+  //Format:
+  //  1 Byte   1 Byte   1 Byte   1 Byte         1 Byte        2 Bytes       2 Bytes   2 Bytes        2 Bytes    2 Bytes        4 Bytes                2 Bytes
+  //| Header | Length | Opcode | Tag Op. Mode | Option Byte | Search Flag | Timeout | D.C. Offtime | Metadata | Stream Stats | Nr. of Tags | Filter | Checksum |
+  //D.C Offtime and Stream Stats are only set in continuous mode
+  //Nr of tags is only used in N-tags mode
+  
+  //Example without filter
+  //FF            = Header
+  //08            = Length
+  //22            = Opcode
+  //88            = Tag operation mode (multiselect)
+  //10            = Option bytes (TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA)
+  //00 13         = Search flag
+  //03 E8         = Timeout
+  //00 57         = Metadata flag (PROTOCOL + TIMESTAMP + RSSI + ANTENNA ID + READCOUNT)
+  //1F DF         = Checksum 
+
+  //Example with filter
+  //FF                = Header
+  //1A                = Length
+  //22                = Opcode
+  //88                = Tag operation mode (multiselect)
+  //14                = Option bytes (TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA)
+  //00 13             = Search flag
+  //03 E8             = Timeout
+  //00 57             = Metadata flag (PROTOCOL + TIMESTAMP + RSSI + ANTENNA ID + READCOUNT)
+  //00 00 00 00       = access password --> filter start
+  //00 00 00 20       = bit pointer start address 
+  //30                = filter length  
+  //AA BB CC DD EE FF = filter data
+  //04                = target
+  //00                = action
+  //00                = End of select indicator --> filter end
+  //05 70             = Checksum
+  uint8_t optionByte; 
+
+  // do a size check here
+
+  data[i++] =0x88; // multiselect
+  optionByte = i;
+  data[i++] = 0x00; // option byte
+  data[i++] = searchFlag >> 8 & 0xFF;
+  data[i++] = searchFlag & 0xFF;
 
   //Insert timeout
-  data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
-  data[1] = timeOut & 0xFF;      //Timeout lsB in ms
+  data[i++] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[i++] = timeOut & 0xFF;      //Timeout lsB in ms
 
-  data[2] = bank; //Bank
+  // set off time if continuous scanning is enabled
+  if(readconfig.continuous)
+  {
+    data[i++] = offtime >> 8 & 0xFF;
+    data[i++] = offtime & 0XFF;
+  }
+
+  //Insert metadata to collect
+  data[i++] = metadataFlag >> 8 & 0xFF;
+  data[i++] = metadataFlag & 0xFF;
+
+  // insert stream stats
+  if(readConfig.continuous)
+  {
+    data[i++] = readConfig.streamStats >> 8 & 0xFF;
+    data[i++] = readConfig.streamStats & 0xFF;
+  }
+  if(readConfig.readNTags)
+  {
+    data[i++] = readConfig.N >> 8 & 0xFF;
+    data[i++] = readConfig.N & 0xFF;    
+  }
+
+  if(filter != NULL) 
+  {
+    data[optionByte] = constructFilterMsg(data, &i, filter) | TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA;
+  }
+}
+
+//Creates a message for the 0x22 (READ_TAG_ID_MULTIPLE) opcode
+void constructReadTagDataMsg(uint8_t *data, uint8_t *i, uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut, uint8_t multiselect, uint16_t metadataFlag, struct TagFilter *filter)
+{
+  //Format:
+  //  1 Byte   1 Byte   1 Byte   2 Byte    1 Byte        1 Bytes       2 Bytes   1 Bytes    4 Bytes   1 Bytes            2 Bytes
+  //| Header | Length | Opcode | Timeout | Multiselect | Option Byte | Metadata | Bank    | Address | Length  | Filter | Checksum |
+  //D.C Offtime and Stream Stats are only set in continuous mode
+  //Nr of tags is only used in N-tags mode
+  
+  //Example with filter without multi select
+  //FF                                  = header
+  //1C                                  = length 
+  //28                                  = opcode  
+  //03 E8                               = time out  
+  //11                                  = option byte 
+  //00 00                               = metadata (no metadata)
+  //02                                  = bank
+  //00 00 00 00                         = start address  
+  //00                                  = nr of bytes to read (0 means all)
+  //00 00 00  00                        = access password --> filter start  
+  //60                                  = filter size in bits
+  //98 12 AB 32 FF 00 02 06 05 E4 01 F6 = filter data --> filter end
+  //01  48                              = checksum
+  uint8_t optionByte; 
+
+  // do a size check here
+
+  data[i++] = timeOut >> 8 & 0xFF;
+  data[i++] = timeOut & 0xFF;
+  if(multiselect != 0x00)
+  {
+    data[i++] = multiselect; // multiselect
+  }
+  optionByte = i;
+  data[i++] = 0x00; // option byte
+
+  //Insert metadata
+  data[i++] = metadataFlag >> 8 & 0xFF; 
+  data[i++] = metadataFlag & 0xFF;     
+  data[i++] = bank;
 
   //Splice address into array
   for (uint8_t x = 0; x < sizeof(address); x++)
-    data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
-
-  data[7] = dataLengthRead / 2; //Number of 16-bit chunks to read.
-  //0x00 will read the entire bank but may be more than we expect (both Kill and Access PW will be returned when reading bank 1 from address 0)
+    data[i++] = address >> (8 * (3 - x)) & 0xFF;
 
   //When reading the user data area we need to read the entire bank
   if (bank == 0x03)
-    data[7] = 0x00;
+    data[i++] = 0x00;
+  else
+    data[i++] = dataLengthRead / 2; //Number of 16-bit chunks to read.
 
-  sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
+  if(filter != NULL) 
+  {
+    data[optionByte] = constructFilterMsg(data, &i, filter) | TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA;
+  }
+}
 
+//This function tests if the command was executed properly
+uint8_t checkResponse(uint8_t *dataRead, uint8_t &dataLengthRead) 
+{
   if (msg[0] == ALL_GOOD) //We received a good response
   {
     uint16_t status = (msg[3] << 8) | msg[4];
@@ -523,6 +661,197 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
   dataLengthRead = 0; //Inform caller that we weren't able to read anything
 
   return (RESPONSE_FAIL);
+}
+
+uint8_t RFID::writeEPCData(uint8_t bank, uint32_t address, uint8_t *newEPC, uint8_t newEPCLength, uint16_t timeOut)
+{
+  return writeEPCData(bank, address, newEPC, newEPCLength, timeOut, NULL);
+}
+
+//Writes an EPC to the first tag that satisfies the filter
+//User needs to make sure that the EPCs are unique
+uint8_t RFID::writeEPCData(uint8_t bank, uint32_t address, uint8_t *newEPC, uint8_t newEPCLength, uint16_t timeOut, struct TagFilter &filter)
+{
+  //Examples taken from URA
+  //Example without filter:
+  //FF                      = header  
+  //10                      = length 
+  //23                      = opcode 
+  //03  E8                  = timeout 
+  //00                      = filter disabled
+  //00                      = filter size in bits
+  //98  12  AB  32  FF  00  = new epc
+  //D2  F7                  = checksum
+  
+  //Example with filter:
+  //FF                      = header
+  //12                      = length
+  //23                      = opcode 
+  //03  E8                  = timeout
+  //01                      = filter option byte --> TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC
+  //00  00  00  00          = password 
+  //20                      = filter size in bits
+  //AA  BB  CC  DD          = old EPC 
+  //AA  BB  CC  DD  EE  FF  = new EPC
+  //2F  FA                  = checksum 
+
+  uint8_t i = 0, optionByte; 
+  uint8_t data[MAX_MSG_SIZE];
+  uint8_t option = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC;
+
+  //Pre-load array options
+  data[i++] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[i++] = timeOut & 0xFF;      //Timeout lsB in ms
+  // temporarily set the option byte
+  optionByte = i;
+  data[i++] = 0x00;
+  // add filter if enabled
+  if(filter != NULL)
+  {
+    // fill in filter and change option
+    data[optionByte] = constructFilterMsg(data, &i, filter); 
+  }
+  else 
+  {
+    // filter size in bits
+    data[i++] = 0x00;
+  }
+  //Splice data into array
+  for (uint8_t x = 0; x < newEPCLength; x++)
+    data[i++] = newEPC[x];
+
+  sendMessage(TMR_SR_OPCODE_WRITE_TAG_ID, data, i, timeOut);
+
+  if (msg[0] == ALL_GOOD) //We received a good response
+  {
+    uint16_t status = (msg[3] << 8) | msg[4];
+
+    if (status == 0x0000)
+      return (RESPONSE_SUCCESS);
+  }
+
+  //Else - msg[0] was timeout or other
+  return (RESPONSE_FAIL);
+}
+
+uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut)
+{
+  return writeData(bank, address, dataToRecord, dataLengthToRecord, timeOut, NULL);
+}
+
+//Writes a data array to a given bank and address
+//Allows for writing of passwords and user data
+uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut, struct TagFilter &filter)
+{
+  //Filter disabled
+  //Example: FF  0A  24  03  E8  00  00  00  00  00  03  00  EE  58  9D
+  //FF 0A 24 = Header, LEN, Opcode
+  //03 E8 = Timeout in ms
+  //00 = Option initialize
+  //00 00 00 00 = Address
+  //03 = Bank
+  //00 EE = Data
+  //58 9D = CRC
+
+  //Filter enabled example
+  //FF                  = header
+  //15                  = length
+  //24                  = opcode
+  //03 E8               = timeout
+  //01                  = filter option byte
+  //00 00 00 00         = address
+  //03                  = bank
+  //00 00 00 00         = password
+  //30                  = length of EPC filter in bits
+  //AA BB CC DD EE FF   = EPC filter
+  //CC FF               = data 
+  //06 15               = checksum
+  //Note: URA writes bytes
+
+  uint8_t i = 0, optionByte; 
+  uint8_t data[MAX_MSG_SIZE];
+  uint8_t option = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC;
+
+  //Pre-load array options
+  data[i++] = timeOut >> 8 & 0xFF; //Timeout msB in ms
+  data[i++] = timeOut & 0xFF;      //Timeout lsB in ms
+  optionByte = i;
+  data[i++] = 0x00;                //Option initialize
+
+  //Splice address into array
+  for (uint8_t x = 0; x < sizeof(address); x++)
+    data[i++] = address >> (8 * (3 - x)) & 0xFF;
+
+  //Bank 0 = Passwords
+  //Bank 1 = EPC Memory Bank
+  //Bank 2 = TID
+  //Bank 3 = User Memory
+  data[i++] = bank;
+  // add filter if provided
+  if(filter != NULL) 
+  {
+    data[optionByte] = constructFilterMsg(data, &i, filter); 
+  }
+  //Splice data into array
+  for (uint8_t x = 0; x < dataLengthToRecord; x++)
+    data[i++] = dataToRecord[x];
+
+  sendMessage(TMR_SR_OPCODE_WRITE_TAG_DATA, data, i, timeOut);
+
+  if (msg[0] == ALL_GOOD) //We received a good response
+  {
+    uint16_t status = (msg[3] << 8) | msg[4];
+
+    if (status == 0x0000)
+      return (RESPONSE_SUCCESS);
+  }
+
+  //Else - msg[0] was timeout or other
+  return (RESPONSE_FAIL);
+}
+
+//Reads all the tag IDs it sees
+uint8_t RFID::readMultipleTags(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut, uint16_t searchFlag, uint16_t metadataFlag, bool continuous, uint16_t offtime, uint16_t streamStats, bool readNTags, uint16_t N, struct TagFilter *filter)
+{
+  uint8_t i = 0, optionByte; 
+  uint8_t data[MAX_MSG_SIZE];
+
+  constructReadTagIdMultipleMsg(data, i, bank, address, dataRead, dataLengthRead, timeOut, searchFlag, metadataFlag, continuous, offtime, streamStats, readNTags, N, filter);
+  sendMessage(TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE, data, i, timeOut);
+  return checkResponse(dataRead, dataLengthRead);
+}
+
+//Reads a given bank and address to a data array
+//Allows for reading of passwords, EPCs, and user data
+uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut, struct TagFilter *filter)
+{
+  //Bank 0
+  //response: [00] [08] [28] [00] [00] [EE] [FF] [11] [22] [12] [34] [56] [78]
+  //[EE] [FF] [11] [22] = Kill pw
+  //[12] [34] [56] [78] = Access pw
+
+  //Bank 1
+  //response: [00] [08] [28] [00] [00] [28] [F0] [14] [00] [AA] [BB] [CC] [DD]
+  //[28] [F0] = CRC
+  //[14] [00] = PC
+  //[AA] [BB] [CC] [DD] = EPC
+
+  //Bank 2
+  //response: [00] [18] [28] [00] [00] [E2] [00] [34] [12] [01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [6B] [00] [05] [5F] [FB] [FF] [FF] [DC] [00]
+  //[E2] = CIsID
+  //[00] [34] [12] = Vendor ID = 003, Model ID == 412
+  //[01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [69] [10] [05] [5F] [FB] [FF] [FF] [DC] [00] = Unique ID (TID)
+
+  //Bank 3
+  //response: [00] [40] [28] [00] [00] [41] [43] [42] [44] [45] [46] [00] [00] [00] [00] [00] [00] ...
+  //User data
+
+  uint8_t i = 0, optionByte; 
+  uint8_t data[MAX_MSG_SIZE];
+
+  constructReadTagDataMsg(data, i, bank, address, dataRead, dataLengthRead, timeOut, multiselect, metadataFlag, filter)
+  sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
+  return checkResponse(dataRead, dataLengthRead);
 }
 
 //Send the appropriate command to permanently kill a tag. If the password does not

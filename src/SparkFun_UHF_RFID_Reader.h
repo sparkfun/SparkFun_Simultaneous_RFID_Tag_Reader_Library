@@ -131,6 +131,7 @@ public:
   uint16_t getTagTimestamp(void); //Pull timestamp value from full record response
   uint32_t getTagFreq(void);      //Pull Freq value from full record response
   int8_t getTagRSSI(void);        //Pull RSSI value from full record response
+  int8_t getAntennaNo(void);        //Pull Antenna number from full record response  
 
   bool check(void);
 

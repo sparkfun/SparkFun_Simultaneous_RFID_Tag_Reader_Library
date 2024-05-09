@@ -27,6 +27,7 @@
 #define TMR_SR_OPCODE_WRITE_TAG_DATA 0x24
 #define TMR_SR_OPCODE_KILL_TAG 0x26
 #define TMR_SR_OPCODE_READ_TAG_DATA 0x28
+#define TMR_SR_OPCODE_GET_TAG_ID_BUFFER 0x29
 #define TMR_SR_OPCODE_CLEAR_TAG_ID_BUFFER 0x2A
 #define TMR_SR_OPCODE_MULTI_PROTOCOL_TAG_OP 0x2F
 #define TMR_SR_OPCODE_GET_READ_TX_POWER 0x62
@@ -99,36 +100,34 @@
 #define TMR_GEN2_BANK_TID_ENABLED 0x10
 #define TMR_GEN2_BANK_USER_ENABLED 0x20
 
-uint8_t *data, uint8_t *i, uint8_t *type, uint32_t password, uint32_t start, uint8_t filterDataBitLength, 
-  uint8_t *filterData, uint8_t target, uint8_t action, bool inverse, bool read, bool multiselect, bool secure
-
 // define a TagFilter to make code a bit more readable
 typedef struct TagFilter
 {
-  uint8_t type;
-  uint32_t password;
-  uint32_t start;
-  uint8_t filterDataBitLength;
-  uint8_t *filterData;
-  uint8_t target;
-  uint8_t action;
-  bool inverse;
-  bool read;
-  bool multiselect;
-  bool secure;
- } TagFilter;
+  uint8_t type = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_DISABLED;
+  uint32_t password = 0x00;
+  uint32_t start = 0x00;
+  uint16_t filterDataBitLength = 0x00; // note that if second byte is used "EXTENDED_DATA_LENGTH" needs to be set
+  uint8_t *filterData = NULL;
+  uint8_t target = 0x04;
+  uint8_t action = 0x00;
+  bool isInverse = false;
+  bool isMultiselect = false;
+  bool isSecure = false;
+  bool useMetadata = false;
+};
 
- // define a ReadConfig to make code more readable
- typedef struct ReadConfig 
- {
-   uint16_t searchFlag;
-   uint16_t metadataFlag;
-   bool continuous;
-   uint16_t offtime;
-   uint16_t streamStats;
-   bool readNTags;
-   uint16_t N;
- } ReadConfig;
+// define a ReadConfig to make code more readable
+typedef struct ReadConfig 
+{
+  uint8_t multiSelect = 0x00; // can we select multiple tags (0x88) -->
+  uint16_t searchFlag = 0x00; // what kind of search flag -->
+  uint16_t metadataFlag = 0x00; // what metadata do we collect --> 
+  bool isContinuous = false; // are we in continuous mode -->
+  uint16_t offtime = 0x00; // offtime -->
+  uint16_t streamStats = 0x00;
+  bool readNTags = false; // are we in Ntags mode -->
+  uint16_t N = 0x00;
+};
 
 class RFID
 {
@@ -151,7 +150,8 @@ public:
   void setAntennaSearchList();
   void setTagProtocol(uint8_t protocol = 0x05);
 
-  void startReading(void); //Disable filtering and start reading continuously
+  void startReading();
+  void startReadingWithFilterConfig(uint16_t offtime, ReadConfig &readConfig, TagFilter &filter); 
   void stopReading(void);  //Stops continuous read. Give 1000 to 2000ms for the module to stop reading.
 
   void pinMode(uint8_t pin, uint8_t mode);
@@ -175,12 +175,43 @@ public:
   int8_t getTagRSSI(void);        //Pull RSSI value from full record response
 
   bool check(void);
+  uint8_t checkResponse(uint8_t *dataRead, uint8_t &dataLengthRead);
+  
+  //ReadConfig RFID::initReadConfig(uint16_t searchFlag, uint16_t metadataFlag, bool continuous = false, uint16_t offtime = 0, uint16_t streamStats = 0, bool readNTags = false, uint16_t N = 0);
+  
+  // simple filters
+  TagFilter initEmptyFilter();
+  TagFilter initEPCReadFilter(uint8_t *EPC, uint16_t EPCLength); 
+  TagFilter initEPCSingleReadFilter(uint8_t *EPC, uint16_t EPCLength); 
+  TagFilter initEPCLengthReadFilter(uint16_t EPCBitLength); 
+  TagFilter initUserDataReadFilter(uint8_t *data, uint16_t dataLength); 
+  TagFilter initTIDReadFilter(uint8_t *tid, uint16_t tidLength); 
+  TagFilter initPasswordFilter(uint32_t password); 
+  TagFilter initEPCWriteFilter(uint8_t *EPC, uint16_t EPCLength); 
+  void setAccessPasswordFilter(uint32_t password);
 
+  // simple configurations
+  ReadConfig initStandardReadMultipleTagsOnceConfig();
+  ReadConfig initStandardContinuousReadConfig();
+  ReadConfig initStandardReadTagDataOnce();
+
+  uint8_t constructFilterMsg(uint8_t *data, uint8_t &i, TagFilter &filter); 
+  void constructMultiProtocolTagOpMsg(uint8_t *data, uint8_t &i, ReadConfig &readConfig, TagFilter &filter);
+  void constructReadTagIdMultipleMsg(uint8_t *data, uint8_t &i, ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
+  void constructReadTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint32_t address, uint8_t dataLengthRead, ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
+  void constructWriteTagIdMsg(uint8_t *data, uint8_t &i, uint8_t *newEPC, uint8_t newEPCLength, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
+  void constructWriteTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
+  
   uint8_t readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut = COMMAND_TIME_OUT);
-  uint8_t writeTagEPC(char *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
+  uint8_t readMultipleTags(uint16_t timeOut = COMMAND_TIME_OUT);
+  uint8_t readMultipleTagsWithFilterConfig(ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
+  uint8_t writeTagEPC(uint8_t *newID, uint8_t newIDLength, uint16_t timeOut = COMMAND_TIME_OUT);
+  uint8_t writeTagEPCWithFilter(uint8_t *newEPC, uint8_t newEPCLength, TagFilter &filter,  uint16_t timeOut = COMMAND_TIME_OUT);
 
   uint8_t readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut = COMMAND_TIME_OUT);
+  uint8_t readDataWithFilterConfig(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead,  ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
   uint8_t writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut = COMMAND_TIME_OUT);
+  uint8_t writeDataWithFilter(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, TagFilter &filter, uint16_t timeOut = COMMAND_TIME_OUT);
 
   uint8_t readUserData(uint8_t *userData, uint8_t &userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);
   uint8_t writeUserData(uint8_t *userData, uint8_t userDataLength, uint16_t timeOut = COMMAND_TIME_OUT);

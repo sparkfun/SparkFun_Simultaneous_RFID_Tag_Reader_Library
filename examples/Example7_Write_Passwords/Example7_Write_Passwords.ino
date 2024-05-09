@@ -12,14 +12,35 @@
   Arduino pin 3 to Nano RX
 */
 
-//Used for transmitting to the device
-//If you run into compilation errors regarding this include, see the README
-#include <SoftwareSerial.h>
+// Library for controlling the RFID module
+#include "SparkFun_UHF_RFID_Reader.h"
 
+// Create instance of the RFID module
+RFID rfidModule;
+
+// By default, this example assumes software serial. If your platform does not
+// support software serial, you can use hardware serial by commenting out these
+// lines and changing the rfidSerial definition below
+#include <SoftwareSerial.h>
 SoftwareSerial softSerial(2, 3); //RX, TX
 
-#include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
-RFID nano; //Create instance
+// Here you can specify which serial port the RFID module is connected to. This
+// will be different on most platforms, so check what is needed for yours and
+// adjust the definition as needed. Some examples are provided below
+#define rfidSerial softSerial // Software serial (eg. Arudino Uno or SparkFun RedBoard)
+// #define rfidSerial Serial1 // Hardware serial (eg. ESP32 or Teensy)
+
+// Here you can select the baud rate for the module. 38400 is recommended if
+// using software serial, and 115200 if using hardware serial.
+#define rfidBaud 38400
+// #define rfidBaud 115200
+
+// Here you can select which module you are using. This library was originally
+// written for the M6E Nano only, and that is the default if the module is not
+// specified. Support for the M7E Hecto has since been added, which can be
+// selected below
+#define moduleType ThingMagic_M6E_NANO
+// #define moduleType ThingMagic_M7E_HECTO
 
 void setup()
 {
@@ -29,18 +50,18 @@ void setup()
   Serial.println();
   Serial.println("Initializing...");
 
-  if(setupNano(38400) == false) //Configure nano to run at 38400bps
+  if (setupRfidModule(rfidBaud) == false)
   {
     Serial.println("Module failed to respond. Please check wiring.");
     while(1); //Freeze!
   }
 
-  nano.setRegion(REGION_NORTHAMERICA); //Set to North America
+  rfidModule.setRegion(REGION_NORTHAMERICA); //Set to North America
 
-  nano.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
+  rfidModule.setReadPower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
-  nano.setWritePower(500); //5.00 dBm. Higher values may cause USB port to brown out
+  rfidModule.setWritePower(500); //5.00 dBm. Higher values may cause USB port to brown out
   //Max Write TX Power is 27.00 dBm and may cause temperature-limit throttling
 
 }
@@ -52,7 +73,7 @@ void loop()
   Serial.read(); //Throw away the user's character
 
   byte myKillPW[] = {0xEE, 0xFF, 0x11, 0x22};
-  byte response = nano.writeKillPW(myKillPW, sizeof(myKillPW));
+  byte response = rfidModule.writeKillPW(myKillPW, sizeof(myKillPW));
 
   if (response == RESPONSE_SUCCESS)
     Serial.println("New Kill PW Written!");
@@ -60,7 +81,7 @@ void loop()
     Serial.println("Failed write");
 
   byte myAccessPW[] = {0x12, 0x34, 0x56, 0x78};
-  response = nano.writeAccessPW(myAccessPW, sizeof(myAccessPW));
+  response = rfidModule.writeAccessPW(myAccessPW, sizeof(myAccessPW));
 
   if (response == RESPONSE_SUCCESS)
     Serial.println("New Access PW Written!");
@@ -70,24 +91,25 @@ void loop()
 
 //Gracefully handles a reader that is already configured and already reading continuously
 //Because Stream does not have a .begin() we have to do this outside the library
-boolean setupNano(long baudRate)
+boolean setupRfidModule(long baudRate)
 {
-  nano.begin(softSerial); //Tell the library to communicate over software serial port
+  rfidModule.begin(rfidSerial, moduleType); //Tell the library to communicate over serial port
 
   //Test to see if we are already connected to a module
   //This would be the case if the Arduino has been reprogrammed and the module has stayed powered
-  softSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
-  while(!softSerial); //Wait for port to open
+  rfidSerial.begin(baudRate); //For this test, assume module is already at our desired baud rate
+  delay(100); //Wait for port to open
 
   //About 200ms from power on the module will send its firmware version at 115200. We need to ignore this.
-  while(softSerial.available()) softSerial.read();
-  
-  nano.getVersion();
+  while (rfidSerial.available())
+    rfidSerial.read();
 
-  if (nano.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)
+  rfidModule.getVersion();
+
+  if (rfidModule.msg[0] == ERROR_WRONG_OPCODE_RESPONSE)
   {
     //This happens if the baud rate is correct but the module is doing a ccontinuous read
-    nano.stopReading();
+    rfidModule.stopReading();
 
     Serial.println(F("Module continuously reading. Asking it to stop..."));
 
@@ -96,22 +118,24 @@ boolean setupNano(long baudRate)
   else
   {
     //The module did not respond so assume it's just been powered on and communicating at 115200bps
-    softSerial.begin(115200); //Start software serial at 115200
+    rfidSerial.begin(115200); //Start serial at 115200
 
-    nano.setBaud(baudRate); //Tell the module to go to the chosen baud rate. Ignore the response msg
+    rfidModule.setBaud(baudRate); //Tell the module to go to the chosen baud rate. Ignore the response msg
 
-    softSerial.begin(baudRate); //Start the software serial port, this time at user's chosen baud rate
+    rfidSerial.begin(baudRate); //Start the serial port, this time at user's chosen baud rate
+
+    delay(250);
   }
 
   //Test the connection
-  nano.getVersion();
-  if (nano.msg[0] != ALL_GOOD) return (false); //Something is not right
+  rfidModule.getVersion();
+  if (rfidModule.msg[0] != ALL_GOOD)
+    return false; //Something is not right
 
-  //The M6E has these settings no matter what
-  nano.setTagProtocol(); //Set protocol to GEN2
+  //The module has these settings no matter what
+  rfidModule.setTagProtocol(); //Set protocol to GEN2
 
-  nano.setAntennaPort(); //Set TX/RX antenna ports to 1
+  rfidModule.setAntennaPort(); //Set TX/RX antenna ports to 1
 
-  return (true); //We are ready to rock
+  return true; //We are ready to rock
 }
-

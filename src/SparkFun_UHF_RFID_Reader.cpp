@@ -47,11 +47,13 @@ RFID::RFID(void)
 }
 
 //Initialize the Serial port
-void RFID::begin(Stream &serialPort)
+void RFID::begin(Stream &serialPort, ThingMagic_Module_t moduleType)
 {
   _nanoSerial = &serialPort; //Grab which port the user wants us to use
 
   //_nanoSerial->begin(); //Stream has no .begin() so the user has to do a whateverSerial.begin(xxxx); from setup()
+
+  _moduleType = moduleType; //Save the module type for later
 }
 
 //Enable or disable the printing of sent/response HEX values.
@@ -117,11 +119,11 @@ void RFID::stopReading()
 }
 
 // Set one of the GPIO pins as INPUT or OUTPUT
-void RFID::pinMode(uint8_t pin, uint8_t mode)
+void RFID::pinMode(uint8_t pin, ThingMagic_PinMode_t mode)
 {
   // {option flag, pin number, pin mode, pin state}
   uint8_t data[] = {1, pin, mode, 0};
-  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, false);
+  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, true);
 }
 
 // For a pin configured as an OUTPUT, this sets that pin state HIGH or LOW
@@ -129,7 +131,7 @@ void RFID::digitalWrite(uint8_t pin, uint8_t state)
 {
   // {pin number, pin state}
   uint8_t data[] = {pin, state};
-  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, false);
+  sendMessage(TMR_SR_OPCODE_SET_USER_GPIO_OUTPUTS, data, sizeof(data), COMMAND_TIME_OUT, true);
 }
 
 // For a pin configured as an INPUT, this returns that pin's state (HIGH/LOW)
@@ -172,6 +174,14 @@ bool RFID::digitalRead(uint8_t pin)
 //0xFF = OPEN
 void RFID::setRegion(uint8_t region)
 {
+  // There are multiple North American regions, inlcuding NA, NA2, and NA3. A
+  // previous version of this library was written only for the M6E Nano, which
+  // only supports NA2 and NA3, and the macro REGION_NORTHAMERICA was defined
+  // for NA2. This version now defines the macro as NA, so for backwards
+  // compatibility, we need to change the region to NA2 if it's the M6E
+  if(region == REGION_NORTHAMERICA && _moduleType == ThingMagic_M6E_NANO)
+      region = REGION_NORTHAMERICA2;
+
   sendMessage(TMR_SR_OPCODE_SET_REGION, &region, sizeof(region));
 }
 
@@ -458,44 +468,54 @@ uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, u
 uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut)
 {
   //Bank 0
-  //response: [00] [08] [28] [00] [00] [EE] [FF] [11] [22] [12] [34] [56] [78]
+  //response: [00] [08] [28] [00] [00] [10] [00] [00] [EE] [FF] [11] [22] [12] [34] [56] [78]
   //[EE] [FF] [11] [22] = Kill pw
   //[12] [34] [56] [78] = Access pw
 
   //Bank 1
-  //response: [00] [08] [28] [00] [00] [28] [F0] [14] [00] [AA] [BB] [CC] [DD]
+  //response: [00] [08] [28] [00] [00] [10] [00] [00] [28] [F0] [14] [00] [AA] [BB] [CC] [DD]
   //[28] [F0] = CRC
   //[14] [00] = PC
   //[AA] [BB] [CC] [DD] = EPC
 
   //Bank 2
-  //response: [00] [18] [28] [00] [00] [E2] [00] [34] [12] [01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [6B] [00] [05] [5F] [FB] [FF] [FF] [DC] [00]
+  //response: [00] [18] [28] [00] [00] [10] [00] [00] [E2] [00] [34] [12] [01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [69] [10] [05] [5F] [FB] [FF] [FF] [DC] [00]
   //[E2] = CIsID
   //[00] [34] [12] = Vendor ID = 003, Model ID == 412
   //[01] [6E] [FE] [00] [03] [7D] [9A] [A3] [28] [05] [01] [69] [10] [05] [5F] [FB] [FF] [FF] [DC] [00] = Unique ID (TID)
 
   //Bank 3
-  //response: [00] [40] [28] [00] [00] [41] [43] [42] [44] [45] [46] [00] [00] [00] [00] [00] [00] ...
+  //response: [00] [40] [28] [00] [00] [10] [00] [00] [41] [43] [42] [44] [45] [46] [00] [00] [00] [00] [00] [00] ...
   //User data
 
-  uint8_t data[8];
+  uint8_t data[11];
 
   //Insert timeout
   data[0] = timeOut >> 8 & 0xFF; //Timeout msB in ms
   data[1] = timeOut & 0xFF;      //Timeout lsB in ms
 
-  data[2] = bank; //Bank
+  // A previous version of this library did not include these 3 bytes. It works
+  // fine with the M6E, but not the M7E. After reverse engineering the protocol
+  // from the Mercury API (TMR_SR_cmdGEN2ReadTagData() in serial_reader_l3.c),
+  // it was found that these 3 bytes are required. Not really sure what they do,
+  // but it seems to work!
+  data[2] = 0x10; // Option byte
+  data[3] = 0x00; // Metadata MSB
+  data[4] = 0x00; // Metadata LSB
+
+  data[5] = bank; //Bank
 
   //Splice address into array
   for (uint8_t x = 0; x < sizeof(address); x++)
-    data[3 + x] = address >> (8 * (3 - x)) & 0xFF;
+    data[6 + x] = address >> (8 * (3 - x)) & 0xFF;
 
-  data[7] = dataLengthRead / 2; //Number of 16-bit chunks to read.
-  //0x00 will read the entire bank but may be more than we expect (both Kill and Access PW will be returned when reading bank 1 from address 0)
-
-  //When reading the user data area we need to read the entire bank
-  if (bank == 0x03)
-    data[7] = 0x00;
+  // The last byte is the number of 16-bit words to read. If it's set to zero,
+  // then it will read the entire bank. We could set this to dataLengthRead / 2,
+  // but it's easier to just set it to zero and truncate the response later.
+  // That also helps if dataLengthRead differs from the actual the bank size,
+  // which can cause the read to fail entirely.
+  data[10] = 0x00;
+  // data[10] = dataLengthRead / 2;
 
   sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, sizeof(data), timeOut);
 
@@ -505,7 +525,8 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
 
     if (status == 0x0000)
     {
-      uint8_t responseLength = msg[1];
+      // Offset by 3 for the returned option and metadata bytes
+      uint8_t responseLength = msg[1] - 3;
 
       if (responseLength < dataLengthRead) //User wants us to read more than we have available
         dataLengthRead = responseLength;
@@ -513,7 +534,8 @@ uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_
       //There is a case here where responseLegnth is more than dataLengthRead, in which case we ignore (don't load) the additional bytes
       //Load limited response data into caller's array
       for (uint8_t x = 0; x < dataLengthRead; x++)
-        dataRead[x] = msg[5 + x];
+        // Data starts at byte 8 (header (1), size (1), opcode (1), status (2), option (1), metadata (2))
+        dataRead[x] = msg[8 + x];
 
       return (RESPONSE_SUCCESS);
     }
@@ -725,6 +747,10 @@ uint8_t RFID::parseResponse(void)
       else if (statusMsg == 0x0504)
       {
         return (RESPONSE_IS_TEMPTHROTTLE);
+      }
+      else if (statusMsg == 0x0505)
+      {
+        return (RESPONSE_IS_HIGHRETURNLOSS);
       }
       else
       {

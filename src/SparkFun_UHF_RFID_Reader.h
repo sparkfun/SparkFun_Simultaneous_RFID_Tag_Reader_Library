@@ -60,8 +60,10 @@
 #define RESPONSE_IS_UNKNOWN 10
 #define RESPONSE_SUCCESS 11
 #define RESPONSE_FAIL 12
+#define RESPONSE_IS_HIGHRETURNLOSS 13
 
 //Define the allowed regions - these set the internal freq of the module
+#define REGION_NORTHAMERICA 0x01
 #define REGION_INDIA 0x04
 #define REGION_JAPAN 0x05
 #define REGION_CHINA 0x06
@@ -69,15 +71,29 @@
 #define REGION_KOREA 0x09
 #define REGION_AUSTRALIA 0x0B
 #define REGION_NEWZEALAND 0x0C
-#define REGION_NORTHAMERICA 0x0D
+#define REGION_NORTHAMERICA2 0x0D
+#define REGION_NORTHAMERICA3 0x0E
 #define REGION_OPEN 0xFF
+
+// Enum for different modules
+typedef enum
+{
+  ThingMagic_M6E_NANO,
+  ThingMagic_M7E_HECTO,
+} ThingMagic_Module_t;
+
+typedef enum
+{
+  ThingMagic_PinMode_INPUT = 0,
+  ThingMagic_PinMode_OUTPUT = 1
+} ThingMagic_PinMode_t;
 
 class RFID
 {
 public:
   RFID(void);
 
-  void begin(Stream &serialPort = Serial); //If user doesn't specify then Serial will be used
+  void begin(Stream &serialPort = Serial, ThingMagic_Module_t moduleType = ThingMagic_M6E_NANO); //If user doesn't specify then Serial will be used
 
   void enableDebugging(Stream &debugPort = Serial); //Turn on command sending and response printing. If user doesn't specify then Serial will be used
   void disableDebugging(void);
@@ -96,7 +112,7 @@ public:
   void startReading(void); //Disable filtering and start reading continuously
   void stopReading(void);  //Stops continuous read. Give 1000 to 2000ms for the module to stop reading.
 
-  void pinMode(uint8_t pin, uint8_t mode);
+  void pinMode(uint8_t pin, ThingMagic_PinMode_t mode);
   void digitalWrite(uint8_t pin, uint8_t state);
   bool digitalRead(uint8_t pin);
 
@@ -164,4 +180,6 @@ private:
   uint8_t _head = 0; //Tracks the length of the incoming message as we poll the software serial
 
   boolean _printDebug = false; //Flag to print the serial commands we are sending to the Serial port for debug
+
+  ThingMagic_Module_t _moduleType;
 };

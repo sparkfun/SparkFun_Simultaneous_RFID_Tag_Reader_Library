@@ -87,7 +87,7 @@ void RFID::startReading()
 {
   TagFilter filter;
   ReadConfig readConfig = initStandardContinuousReadConfig();
-  startReadingWithFilterConfig(0, readConfig, filter);
+  startReadingWithFilterConfig(readConfig, filter);
 }
 
 //Used for continuous reading
@@ -113,7 +113,7 @@ void RFID::constructMultiProtocolTagOpMsg(uint8_t *data, uint8_t &i, ReadConfig 
 //Begin scanning for tags
 //There are many many options and features to the nano, this sets options
 //for continuous read of GEN2 type tags
-void RFID::startReadingWithFilterConfig(uint16_t offtime, ReadConfig &readConfig, TagFilter &filter)
+void RFID::startReadingWithFilterConfig(ReadConfig &readConfig, TagFilter &filter)
 {
   //Constructing message should not take too much resources, since it is only done once
   uint8_t i = 0;
@@ -321,24 +321,24 @@ void RFID::getWritePower()
 
 //Read a single EPC
 //Caller must provide an array for EPC to be stored in
-uint8_t RFID::readTagEPC(uint8_t *epc, uint8_t &epcLength, uint16_t timeOut)
+uint8_t RFID::readTagEPC(uint16_t timeOut)
 {
   uint8_t bank = 0x01;    //User data bank
   uint8_t address = 0x00; //Starts at 20
 
-  return (readData(bank, address, epc, epcLength, timeOut));
+  return (readData(bank, address, timeOut));
 }
 
 
 //This reads the user data area of the tag. 0 to 64 bytes are normally available.
 //Use with caution. The module can't control which tag hears the command.
 //TODO Add support for accessPassword
-uint8_t RFID::readUserData(uint8_t *userData, uint8_t &userDataLength, uint16_t timeOut)
+uint8_t RFID::readUserData(uint16_t timeOut)
 {
   uint8_t bank = 0x03;    //User data bank
   uint8_t address = 0x00; //Starts at 0
 
-  return (readData(bank, address, userData, userDataLength, timeOut));
+  return (readData(bank, address, timeOut));
 }
 
 //This writes data to the tag. 0, 4, 16 or 64 bytes may be available.
@@ -362,12 +362,12 @@ uint8_t RFID::writeKillPW(uint8_t *password, uint8_t passwordLength, uint16_t ti
 }
 
 //Read the kill password. Should be 4 bytes long
-uint8_t RFID::readKillPW(uint8_t *password, uint8_t &passwordLength, uint16_t timeOut)
+uint8_t RFID::readKillPW(uint16_t timeOut)
 {
   uint8_t bank = 0x00;    //Passwords bank
   uint8_t address = 0x00; //Kill password address
 
-  return (readData(bank, address, password, passwordLength, timeOut));
+  return (readData(bank, address, timeOut));
 }
 
 //Write the access password. Should be 4 bytes long
@@ -380,83 +380,65 @@ uint8_t RFID::writeAccessPW(uint8_t *password, uint8_t passwordLength, uint16_t 
 }
 
 //Read the access password. Should be 4 bytes long
-uint8_t RFID::readAccessPW(uint8_t *password, uint8_t &passwordLength, uint16_t timeOut)
+uint8_t RFID::readAccessPW(uint16_t timeOut)
 {
   uint8_t bank = 0x00;    //Passwords bank
   uint8_t address = 0x02; //Access password address
 
-  return (readData(bank, address, password, passwordLength, timeOut));
+  return (readData(bank, address, timeOut));
 }
 
 //Read the unique TID of the tag. Should be 20 bytes long
 //This is a depricated function left in place in case users still use the readTID command
 //This function is actually reading the UID. To read the TID, including the Chip Vendor
 //change the address to 0x00.
-uint8_t RFID::readTID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
+uint8_t RFID::readTID(uint16_t timeOut)
 {
   uint8_t bank = 0x02; //Bank for TID
   uint8_t address = 0x02;
 
-  return (readData(bank, address, tid, tidLength, timeOut));
+  return (readData(bank, address, timeOut));
 }
 
 //Read the unique ID of the tag. Can vary from 0 to 20 or more bytes
-uint8_t RFID::readUID(uint8_t *tid, uint8_t &tidLength, uint16_t timeOut)
+uint8_t RFID::readUID(uint16_t timeOut)
 {
   uint8_t bank = 0x02;    //Bank for TID
   uint8_t address = 0x02; //UID of the TID starts at 4
 
-  return (readData(bank, address, tid, tidLength, timeOut));
+  return (readData(bank, address, timeOut));
 }
 
 
 /** struct initializers **/
-/*
-// Initialize a ReadConfig struct
-TagFilter RFID::initReadConfig(uint16_t searchFlag, uint16_t metadataFlag, bool continuous, uint16_t offtime, uint16_t streamStats, bool readNTags, uint16_t N) 
-{
-  return ReadConfig{searchFlag, metadataFlag, continuous, offtime, streamStats, readNTags, N};
-}
-
-// Initialize a TagFilter struct
-TagFilter RFID::initTagFilter(uint8_t type, uint32_t password, uint32_t start, uint8_t filterDataBitLength, 
-  uint8_t *filterData, uint8_t target, uint8_t action=, bool inverse, bool multiselect, bool secure) 
-{
-  return TagFilter{type, password, start, filterDataBitLength, filterData, target, action, inverse, multiselect, secure};
-}*/
-
+//Returns an empty filter, should not do anything
 TagFilter RFID::initEmptyFilter()
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_DISABLED, 0x00, 0x00, 0x00, NULL, 0x04, 0x00, false, false, false, false};
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_DISABLED, 0x00, 0x00, 0x00, NULL, 0x04, 0x00, false, false, false};
 }
 
+//Returns an empty filter, but with the metadata flag set so it returns the proper option byte
+TagFilter RFID::initEmptyFilterWithMetadata()
+{
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_DISABLED, 0x00, 0x00, 0x00, NULL, 0x04, 0x00, false, false, false};
+}
 
 //EPC Read filter uses an address and sets the metadata flag
 //EPCLength is in bytes
 //Should be good for any read operation
 TagFilter RFID::initEPCReadFilter(uint8_t *EPC, uint16_t EPCLength)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_ADDRESSED_EPC, 0x00, 0x20, EPCLength * 8, EPC, 0x04, 0x00, false, true, false, true};
-  /*
-  TagFilter filter;
-  filter.type = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_ADDRESSED_EPC;
-  filter.start = 0x20;
-  filter.filterData = EPC;
-  filter.filterDataBitLength = EPCLength * 8; //length is in bits
-  filter.isMultiselect = true;
-  filter.useMetadata = true;
-  return filter;
-  */
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_ADDRESSED_EPC, 0x00, 0x20, EPCLength * 8, EPC, 0x04, 0x00, false, true, false};
 }
 
 TagFilter RFID::initEPCWriteFilter(uint8_t *EPC, uint16_t EPCLength)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC, 0x00, 0x00, EPCLength * 8, EPC, 0x04, 0x00, false, false, false, false};  
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC, 0x00, 0x00, EPCLength * 8, EPC, 0x04, 0x00, false, false, false};  
 }
 
 TagFilter RFID::initEPCSingleReadFilter(uint8_t *EPC, uint16_t EPCLength)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC, 0x00, 0x00, EPCLength * 8, EPC, 0x04, 0x00, false, false, false, true};
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC, 0x00, 0x00, EPCLength * 8, EPC, 0x04, 0x00, false, false, false};
 }
 
 //Filters out all tags with EPCBitLength
@@ -464,54 +446,26 @@ TagFilter RFID::initEPCSingleReadFilter(uint8_t *EPC, uint16_t EPCLength)
 //Should work for any read operation
 TagFilter RFID::initEPCLengthReadFilter(uint16_t EPCBitLength)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_LENGTH_OF_EPC, 0x00, 0x00, EPCBitLength, NULL, 0x04, 0x00, false, true, false, true};
-  /*
-  TagFilter filter;
-  filter.type = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_LENGTH_OF_EPC;
-  filter.filterDataBitLength = EPCBitLength;
-  filter.isMultiselect = true;
-  filter.useMetadata = true;
-  return filter;
-  */
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_LENGTH_OF_EPC, 0x00, 0x00, EPCBitLength, NULL, 0x04, 0x00, false, true, false};
 }
-
 
 //This read filter filters based on the data bank, starting at address 0x00
 TagFilter RFID::initUserDataReadFilter(uint8_t *data, uint16_t dataLength)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_USER_MEM, 0x00, 0x00, dataLength * 8, data, 0x04, 0x00, false, true, false, true};
-  //TagFilter filter;
-  //filter.type = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_USER_MEM;
-  //filter.filterData = data;
-  //filter.filterDataBitLength = dataLength * 8; // length in bits
-  //filter.isMultiselect = true;
-  //filter.useMetadata = true;
-  //return filter;
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_USER_MEM, 0x00, 0x00, dataLength * 8, data, 0x04, 0x00, false, true, false};
 }
 
 //Read filter to filter on the TID bank
 TagFilter RFID::initTIDReadFilter(uint8_t *tid, uint16_t tidLength)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_TID, 0x00, 0x00, tidLength * 8, tid, 0x04, 0x00, false, true, false, true};
-  //TagFilter filter;
-  //filter.type = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_TID;
-  //filter.filterData = tid;
-  //filter.filterDataBitLength = tidLength * 8; // size in bits
-  //filter.isMultiselect = true;
-  //filter.useMetadata = true;
-  //return filter;
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_TID, 0x00, 0x00, tidLength * 8, tid, 0x04, 0x00, false, true, false};
 }
 
 //A password filter is applied when a non 0x00 password is supplied but no filter is specified
 //Note: have not found any real use till date
 TagFilter RFID::initPasswordFilter(uint32_t password)
 {
-  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_USE_PASSWORD, password, 0x00, 0x00, NULL, 0x04, 0x00, false, true, false, false};
-  //TagFilter filter;
-  //filter.type = TMR_SR_GEN2_SINGULATION_OPTION_USE_PASSWORD;
-  //filter.password = password;
-  //filter.isMultiselect = true;
-  //return filter;
+  return TagFilter{TMR_SR_GEN2_SINGULATION_OPTION_USE_PASSWORD, password, 0x00, 0x00, NULL, 0x04, 0x00, false, true, false};
 }
 
 
@@ -610,11 +564,6 @@ uint8_t RFID::constructFilterMsg(uint8_t *data, uint8_t &i, TagFilter &filter)
   {
     option |= TMR_SR_GEN2_SINGULATION_OPTION_SECURE_READ_DATA;
   }
-  // reads usually want metadata as well
-  if(filter.useMetadata) 
-  {
-    option |= TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA;
-  }
   return option;
 }
 
@@ -628,19 +577,6 @@ ReadConfig RFID::initStandardReadMultipleTagsOnceConfig()
   config.multiSelect = 0x88;
   return config;
 }
-
-/*
-//Sets a default read config for reading one tag once
-//metadata 0x57, search flag=0x13
-ReadConfig RFID::initStandardReadSingleTagOnceConfig()
-{
-  ReadConfig config;
-  config.metadataFlag = 0x57;
-  config.searchFlag = 0x13;
-  config.multiSelect = 0x00;
-  return config;
-}*/
-
 
 //Default settings for the continuous read
 //Offtime is set to 250 (1000/1250 * 100 = 80% utilisation)
@@ -709,7 +645,7 @@ void RFID::constructReadTagIdMultipleMsg(uint8_t *data, uint8_t &i, ReadConfig &
   if(readConfig.multiSelect != 0x00)
     data[i++] = readConfig.multiSelect;
   optionByte = i;
-  data[i++] = 0x00; // option byte
+  data[i++] = TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA; // option byte, always include metadata
   data[i++] = readConfig.searchFlag >> 8 & 0xFF;
   data[i++] = readConfig.searchFlag & 0xFF;
 
@@ -739,12 +675,12 @@ void RFID::constructReadTagIdMultipleMsg(uint8_t *data, uint8_t &i, ReadConfig &
     data[i++] = readConfig.N >> 8 & 0xFF;
     data[i++] = readConfig.N & 0xFF;    
   }
-  data[optionByte] = constructFilterMsg(data, i, filter) | TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA;
+  data[optionByte] |= constructFilterMsg(data, i, filter); // bitwise or to include metadata
 }
 
 
 //Creates a message for the 0x22 (READ_TAG_ID_MULTIPLE) opcode
-void RFID::constructReadTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint32_t address, uint8_t dataLengthRead, ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut)
+void RFID::constructReadTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint32_t address, ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut)
 {
   //Format:
   //  1 Byte   1 Byte   1 Byte   2 Byte    1 Byte        1 Bytes       2 Bytes   1 Bytes    4 Bytes   1 Bytes            2 Bytes
@@ -752,7 +688,7 @@ void RFID::constructReadTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint
   //D.C Offtime and Stream Stats are only set in continuous mode
   //Nr of tags is only used in N-tags mode
   
-  //Example with filter without multi select
+  //Example with filter 
   //FF                                  = header
   //1C                                  = length 
   //28                                  = opcode  
@@ -772,16 +708,13 @@ void RFID::constructReadTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint
 
   data[i++] = timeOut >> 8 & 0xFF;
   data[i++] = timeOut & 0xFF;
-  if(readConfig.multiSelect != 0x00)
-  {
-    data[i++] = readConfig.multiSelect; // multiselect
-  }
   optionByte = i;
   data[i++] = 0x00; // option byte
 
   //Insert metadata
-  if(filter.useMetadata)
+  if(readConfig.metadataFlag != 0x00)
   {
+    data[optionByte] = TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA; // include metadata flag
     data[i++] = readConfig.metadataFlag >> 8 & 0xFF; 
     data[i++] = readConfig.metadataFlag & 0xFF;     
   }
@@ -790,41 +723,10 @@ void RFID::constructReadTagDataMsg(uint8_t *data, uint8_t &i, uint8_t bank, uint
   //Splice address into array
   for (uint8_t x = 0; x < sizeof(address); x++)
     data[i++] = address >> (8 * (3 - x)) & 0xFF;
-  if (bank == 0x03)
-    data[i++] = 0x00; // read the whole bank
-  else
-    data[i++] = dataLengthRead / 2; //Number of 16-bit chunks to read.
-  data[optionByte] = constructFilterMsg(data, i, filter) | TMR_SR_GEN2_SINGULATION_OPTION_FLAG_METADATA;
+  data[i++] = 0x00; // read the whole bank
+  data[optionByte] |= constructFilterMsg(data, i, filter);
 }
 
-//This function tests if the command was executed properly
-uint8_t RFID::checkResponse(uint8_t *dataRead, uint8_t &dataLengthRead) 
-{
-  if (msg[0] == ALL_GOOD) //We received a good response
-  {
-    uint16_t status = (msg[3] << 8) | msg[4];
-
-    if (status == 0x0000)
-    {
-      uint8_t responseLength = msg[1];
-
-      if (responseLength < dataLengthRead) //User wants us to read more than we have available
-        dataLengthRead = responseLength;
-
-      //There is a case here where responseLegnth is more than dataLengthRead, in which case we ignore (don't load) the additional bytes
-      //Load limited response data into caller's array
-      for (uint8_t x = 0; x < dataLengthRead; x++)
-        dataRead[x] = msg[5 + x];
-
-      return (RESPONSE_SUCCESS);
-    }
-  }
-
-  //Else - msg[0] was timeout or other
-  dataLengthRead = 0; //Inform caller that we weren't able to read anything
-
-  return (RESPONSE_FAIL);
-}
 
 // Creates the WriteEPC messages (0x23)
 void RFID::constructWriteTagIdMsg(uint8_t *data, uint8_t &i, uint8_t *newEPC, uint8_t newEPCLength, TagFilter &filter, uint16_t timeOut)
@@ -929,17 +831,8 @@ uint8_t RFID::writeTagEPCWithFilter(uint8_t *newEPC, uint8_t newEPCLength, TagFi
   uint8_t data[MAX_MSG_SIZE];
   constructWriteTagIdMsg(data, i, newEPC, newEPCLength, filter, timeOut);
   sendMessage(TMR_SR_OPCODE_WRITE_TAG_ID, data, i, timeOut);
-
-  if (msg[0] == ALL_GOOD) //We received a good response
-  {
-    uint16_t status = (msg[3] << 8) | msg[4];
-
-    if (status == 0x0000)
-      return (RESPONSE_SUCCESS);
-  }
-
-  //Else - msg[0] was timeout or other
-  return (RESPONSE_FAIL);
+  response.parse(msg, sizeof(msg));
+  return 0;
 }
 
 uint8_t RFID::writeData(uint8_t bank, uint32_t address, uint8_t *dataToRecord, uint8_t dataLengthToRecord, uint16_t timeOut)
@@ -957,44 +850,26 @@ uint8_t RFID::writeDataWithFilter(uint8_t bank, uint32_t address, uint8_t *dataT
   uint8_t option = TMR_SR_GEN2_SINGULATION_OPTION_SELECT_ON_EPC;
   constructWriteTagDataMsg(data, i, bank, address, dataToRecord, dataLengthToRecord, filter, timeOut);
   sendMessage(TMR_SR_OPCODE_WRITE_TAG_DATA, data, i, timeOut);
-
-  if (msg[0] == ALL_GOOD) //We received a good response
-  {
-    uint16_t status = (msg[3] << 8) | msg[4];
-
-    if (status == 0x0000)
-      return (RESPONSE_SUCCESS);
-  }
-
-  //Else - msg[0] was timeout or other
-  return (RESPONSE_FAIL);
+  response.parse(msg, sizeof(msg));
+  return 0;
 }
 
 //Reads all the tag IDs it sees
 uint8_t RFID::readMultipleTags(uint16_t timeOut)
 {
   ReadConfig config = initStandardReadMultipleTagsOnceConfig();
-  TagFilter filter = initEmptyFilter();
+  TagFilter filter = initEmptyFilterWithMetadata();
   return readMultipleTagsWithFilterConfig(config, filter, timeOut);
 }
 
-/*
-//Reads all the tag IDs it sees
-uint8_t RFID::readSingleTag(uint16_t timeOut)
-{
-  ReadConfig config = initStandardReadSingleTagOnceConfig();
-  TagFilter filter = initEmptyFilter();
-  return readMultipleTagsWithFilterConfig(config, filter, timeOut);
-}*/
 
 //Reads all the tag IDs it sees
 uint8_t RFID::readMultipleTagsWithFilterConfig(ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut)
 {
   uint8_t i = 0; 
   uint8_t data[MAX_MSG_SIZE];
+  //Response response;
 
-  // clear buffer(FF 00 2A 1D 25) empty message
-  sendMessage(TMR_SR_OPCODE_CLEAR_TAG_ID_BUFFER, NULL, 0);
   // construct main read to buffer message
   constructReadTagIdMultipleMsg(data, i, readConfig, filter, timeOut);
   sendMessage(TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE, data, i, timeOut);
@@ -1008,22 +883,27 @@ uint8_t RFID::readMultipleTagsWithFilterConfig(ReadConfig &readConfig, TagFilter
     buffercmd[1] = readConfig.metadataFlag & 0xFF;
     buffercmd[2] = 0x00; 
     sendMessage(TMR_SR_OPCODE_GET_TAG_ID_BUFFER, buffercmd, sizeof(buffercmd));
+    response.parse(msg, sizeof(msg));
+    // clear buffer(FF 00 2A 1D 25) empty message
+    sendMessage(TMR_SR_OPCODE_CLEAR_TAG_ID_BUFFER, NULL, 0);
   }
-  // we don't need to fill buffers because we need to follow up with sendTagFromBuffer
-  // just return if it was succesful or not
+  else 
+  {
+    response.status = RESPONSE_IS_NOTAGFOUND;
+  }
   return 0;
 }
 
-uint8_t RFID::readData(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, uint16_t timeOut)
+uint8_t RFID::readData(uint8_t bank, uint32_t address, uint16_t timeOut)
 {
   ReadConfig readConfig;
   TagFilter filter;
-  return readDataWithFilterConfig(bank, address, dataRead, dataLengthRead, readConfig, filter, timeOut);
+  return readDataWithFilterConfig(bank, address, readConfig, filter, timeOut);
 }
 
 //Reads a given bank and address to a data array
 //Allows for reading of passwords, EPCs, and user data
-uint8_t RFID::readDataWithFilterConfig(uint8_t bank, uint32_t address, uint8_t *dataRead, uint8_t &dataLengthRead, ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut)
+uint8_t RFID::readDataWithFilterConfig(uint8_t bank, uint32_t address, ReadConfig &readConfig, TagFilter &filter, uint16_t timeOut)
 {
   //Bank 0
   //response: [00] [08] [28] [00] [00] [EE] [FF] [11] [22] [12] [34] [56] [78]
@@ -1049,19 +929,10 @@ uint8_t RFID::readDataWithFilterConfig(uint8_t bank, uint32_t address, uint8_t *
   uint8_t i = 0; 
   uint8_t data[MAX_MSG_SIZE];
 
-  constructReadTagDataMsg(data, i, bank, address, dataLengthRead, readConfig, filter, timeOut);
-  /*
-  Serial.println(i);
-  for(uint8_t x = 0; x < i; x++)
-  {
-    Serial.print(data[x], HEX);
-    Serial.print(" ");
-  }
-  Serial.println("");
-  return 0;
-  */
+  constructReadTagDataMsg(data, i, bank, address, readConfig, filter, timeOut);
   sendMessage(TMR_SR_OPCODE_READ_TAG_DATA, data, i, timeOut);
-  return checkResponse(dataRead, dataLengthRead);
+  response.parse(msg, sizeof(msg));
+  return 0;
 }
 
 //Send the appropriate command to permanently kill a tag. If the password does not
@@ -1083,17 +954,8 @@ uint8_t RFID::killTag(uint8_t *password, uint8_t passwordLength, uint16_t timeOu
   data[3 + passwordLength] = 0x00; //RFU
 
   sendMessage(TMR_SR_OPCODE_KILL_TAG, data, sizeof(data), timeOut);
-
-  if (msg[0] == ALL_GOOD) //We received a good response
-  {
-    uint16_t status = (msg[3] << 8) | msg[4];
-
-    if (status == 0x0000)
-      return (RESPONSE_SUCCESS);
-  }
-
-  //Else - msg[0] was timeout or other
-  return (RESPONSE_FAIL);
+  response.parse(msg, sizeof(msg));
+  return 0;
 }
 
 //Checks incoming buffer for the start characters
@@ -1132,6 +994,7 @@ bool RFID::check()
           _debugSerial->print(F("response: "));
           printMessageArray();
         }
+        response.parse(msg, sizeof(msg));
 
         return (true);
       }
@@ -1141,160 +1004,6 @@ bool RFID::check()
   return (false);
 }
 
-//See parseResponse for breakdown of fields
-//Pulls the number of EPC bytes out of the response
-//Often this is 12 bytes
-uint8_t RFID::getTagEPCBytes(void)
-{
-  uint16_t epcBits = 0; //Number of bits of EPC (including PC, EPC, and EPC CRC)
-
-  uint8_t tagDataBytes = getTagDataBytes(); //We need this offset
-
-  for (uint8_t x = 0; x < 2; x++)
-    epcBits |= (uint16_t)msg[27 + tagDataBytes + x] << (8 * (1 - x));
-  uint8_t epcBytes = epcBits / 8;
-  epcBytes -= 4; //Ignore the first two bytes and last two bytes
-
-  return (epcBytes);
-}
-
-//See parseResponse for breakdown of fields
-//Pulls the number of data bytes out of the response
-//Often this is zero
-uint8_t RFID::getTagDataBytes(void)
-{
-  //Number of bits of embedded tag data
-  uint8_t tagDataLength = 0;
-  for (uint8_t x = 0; x < 2; x++)
-    tagDataLength |= (uint16_t)msg[24 + x] << (8 * (1 - x));
-  uint8_t tagDataBytes = tagDataLength / 8;
-  if (tagDataLength % 8 > 0)
-    tagDataBytes++; //Ceiling trick
-
-  return (tagDataBytes);
-}
-
-//See parseResponse for breakdown of fields
-//Pulls the timestamp since last Keep-Alive message from a full response record stored in msg
-uint16_t RFID::getTagTimestamp(void)
-{
-  //Timestamp since last Keep-Alive message
-  uint32_t timeStamp = 0;
-  for (uint8_t x = 0; x < 4; x++)
-    timeStamp |= (uint32_t)msg[17 + x] << (8 * (3 - x));
-
-  return (timeStamp);
-}
-
-//See parseResponse for breakdown of fields
-//Pulls the frequency value from a full response record stored in msg
-uint32_t RFID::getTagFreq(void)
-{
-  //Frequency of the tag detected is loaded over three bytes
-  uint32_t freq = 0;
-  for (uint8_t x = 0; x < 3; x++)
-    freq |= (uint32_t)msg[14 + x] << (8 * (2 - x));
-
-  return (freq);
-}
-
-//See parseResponse for breakdown of fields
-//Pulls the RSSI value from a full response record stored in msg
-int8_t RFID::getTagRSSI(void)
-{
-  return (msg[12] - 256);
-}
-
-//This will parse whatever response is currently in msg into its constituents
-//Mostly used for parsing out the tag IDs and RSSI from a multi tag continuous read
-uint8_t RFID::parseResponse(void)
-{
-  //See http://www.thingmagic.com/images/Downloads/Docs/AutoConfigTool_1.2-UserGuide_v02RevA.pdf
-  //for a breakdown of the response packet
-
-  //Example response:
-  //FF  28  22  00  00  10  00  1B  01  FF  01  01  C4  11  0E  16
-  //40  00  00  01  27  00  00  05  00  00  0F  00  80  30  00  00
-  //00  00  00  00  00  00  00  00  00  15  45  E9  4A  56  1D
-  //  [0] FF = Header
-  //  [1] 28 = Message length
-  //  [2] 22 = OpCode
-  //  [3, 4] 00 00 = Status
-  //  [5 to 11] 10 00 1B 01 FF 01 01 = RFU 7 bytes
-  //  [12] C4 = RSSI
-  //  [13] 11 = Antenna ID (4MSB = TX, 4LSB = RX)
-  //  [14, 15, 16] 0E 16 40 = Frequency in kHz
-  //  [17, 18, 19, 20] 00 00 01 27 = Timestamp in ms since last keep alive msg
-  //  [21, 22] 00 00 = phase of signal tag was read at (0 to 180)
-  //  [23] 05 = Protocol ID
-  //  [24, 25] 00 00 = Number of bits of embedded tag data [M bytes]
-  //  [26 to M] (none) = Any embedded data
-  //  [26 + M] 0F = RFU reserved future use
-  //  [27, 28 + M] 00 80 = EPC Length [N bytes]  (bits in EPC including PC and CRC bits). 128 bits = 16 bytes
-  //  [29, 30 + M] 30 00 = Tag EPC Protocol Control (PC) bits
-  //  [31 to 42 + M + N] 00 00 00 00 00 00 00 00 00 00 15 45 = EPC ID
-  //  [43, 44 + M + N] 45 E9 = EPC CRC
-  //  [45, 46 + M + N] 56 1D = Message CRC
-
-  uint8_t msgLength = msg[1] + 7; //Add 7 (the header, length, opcode, status, and CRC) to the LEN field to get total bytes
-  uint8_t opCode = msg[2];
-
-  //Check the CRC on this response
-  uint16_t messageCRC = calculateCRC(&msg[1], msgLength - 3); //Ignore header (start spot 1), remove 3 bytes (header + 2 CRC)
-  if ((msg[msgLength - 2] != (messageCRC >> 8)) || (msg[msgLength - 1] != (messageCRC & 0xFF)))
-  {
-    return (ERROR_CORRUPT_RESPONSE);
-  }
-
-  if (opCode == TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE) //opCode = 0x22
-  {
-    //Based on the record length identify if this is a tag record, a temperature sensor record, or a keep-alive?
-    if (msg[1] == 0x00) //Keep alive
-    {
-      //We have a Read cycle reset/keep-alive message
-      //Sent once per second
-      uint16_t statusMsg = 0;
-      for (uint8_t x = 0; x < 2; x++)
-        statusMsg |= (uint32_t)msg[3 + x] << (8 * (1 - x));
-
-      if (statusMsg == 0x0400)
-      {
-        return (RESPONSE_IS_KEEPALIVE);
-      }
-      else if (statusMsg == 0x0504)
-      {
-        return (RESPONSE_IS_TEMPTHROTTLE);
-      }
-      else
-      {
-        return (RESPONSE_IS_UNKNOWN);
-      }
-    }
-    else if (msg[1] == 0x08) //Unknown
-    {
-      return (RESPONSE_IS_UNKNOWN);
-    }
-    else if (msg[1] == 0x0a) //temperature
-    {
-      return (RESPONSE_IS_TEMPERATURE);
-    }
-    else //Full tag record
-    {
-      //This is a full tag response
-      //User can now pull out RSSI, frequency of tag, timestamp, EPC, Protocol control bits, EPC CRC, CRC
-      return (RESPONSE_IS_TAGFOUND);
-    }
-  }
-  else
-  {
-    if (_printDebug == true)
-    {
-      _debugSerial->print(F("Unknown opcode in response: 0x"));
-      _debugSerial->println(opCode, HEX);
-    }
-    return (ERROR_UNKNOWN_OPCODE);
-  }
-}
 
 //Given an opcode, a piece of data, and the size of that data, package up a sentence and send it
 void RFID::sendMessage(uint8_t opcode, uint8_t *data, uint8_t size, uint16_t timeOut, boolean waitForResponse)
@@ -1444,41 +1153,4 @@ void RFID::printMessageArray(void)
     }
     _debugSerial->println();
   }
-}
-
-//Comes from serial_reader_l3.c
-//ThingMagic-mutated CRC used for messages.
-//Notably, not a CCITT CRC-16, though it looks close.
-static uint16_t crctable[] =
-    {
-        0x0000,
-        0x1021,
-        0x2042,
-        0x3063,
-        0x4084,
-        0x50a5,
-        0x60c6,
-        0x70e7,
-        0x8108,
-        0x9129,
-        0xa14a,
-        0xb16b,
-        0xc18c,
-        0xd1ad,
-        0xe1ce,
-        0xf1ef,
-};
-
-//Calculates the magical CRC value
-uint16_t RFID::calculateCRC(uint8_t *u8Buf, uint8_t len)
-{
-  uint16_t crc = 0xFFFF;
-
-  for (uint8_t i = 0; i < len; i++)
-  {
-    crc = ((crc << 4) | (u8Buf[i] >> 4)) ^ crctable[crc >> 12];
-    crc = ((crc << 4) | (u8Buf[i] & 0x0F)) ^ crctable[crc >> 12];
-  }
-
-  return crc;
 }

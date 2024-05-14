@@ -277,10 +277,12 @@ void Response::getEPCdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
 }
 
 // returns all metadata for a tag
-void Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint16_t &embeddedDataLength, uint8_t &tagTypeLength)
+void Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
 {
   if(tag < nrTags)
   {
+    uint16_t embeddedDataLength;
+    uint8_t tagTypeLength;
     uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
     uint16_t length = metadataLength + embeddedDataLength + tagTypeLength;
     // make sure it does not exceed buffer length

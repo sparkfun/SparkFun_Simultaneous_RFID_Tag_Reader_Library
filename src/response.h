@@ -176,7 +176,7 @@ class Response
     void getData(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint8_t start);
     void getBankdata(uint8_t item, uint8_t *buf, uint16_t &bufLength);
     void getEPCdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength);
-    void getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint16_t &embeddedDataLength, uint8_t &tagTypeLength);
+    void getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength);
     void printMetadata(uint8_t tag);
 
     // prints bytes in a nice hex format

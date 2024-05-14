@@ -131,6 +131,7 @@ private:
   boolean _printDebug = false; //Flag to print the serial commands we are sending to the Serial port for debug
 };
 
+// prints a byte array
 static void printBytes(uint8_t *bytes, uint8_t len)
 {
   for (uint8_t x = 0 ; x < len ; x++)
@@ -140,3 +141,16 @@ static void printBytes(uint8_t *bytes, uint8_t len)
   } 
   Serial.println("");
 } 
+
+// converts an array of bytes to a hex string, user needs to make sure that chars is large enough
+// using new or malloc is possible, but arduino does not really like dynamic memory
+// returns the numbers of characters written, does not add NULL-byte
+static uint8_t bytesToHexString(uint8_t *bytes, uint8_t len, char *chars)
+{
+  uint8_t length = 0;
+  for (uint8_t x = 0 ; x < len ; x++)
+  {
+    length += sprintf(chars + length, "%02x", bytes[x]);
+  } 
+  return length;
+}

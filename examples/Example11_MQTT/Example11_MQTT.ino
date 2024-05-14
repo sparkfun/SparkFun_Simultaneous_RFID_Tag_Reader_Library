@@ -38,8 +38,6 @@ MqttClient mqttClient(wifiClient);
 // rfid reader object
 RFID nano;
 
-unsigned long lastPublishTime = 0;
-
 void setup() {
   Serial.begin(115200);
   while (!Serial);
@@ -65,13 +63,14 @@ void setup() {
   }
 
   nano.setRegion(REGION_AUSTRALIA); // Set to North America
-  nano.setReadPower(1500); // 15.00 dBm. Higher values may caues USB port to brown out
+  nano.setReadPower(1800); // 15.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
   // set offtime to 500, so we have a 66.67% utilization
   ReadConfig config = nano.initStandardContinuousReadConfig();
+  TagFilter filter;
   config.offtime = 500;
-  nano.startReading(); //Begin scanning for tags
+  nano.startReadingWithFilterConfig(config, filter); //Begin scanning for tags
 }
 
 void loop() {
@@ -79,26 +78,51 @@ void loop() {
   if (nano.check() == true) //Check to see if any new data has come in from module
   {
     // succesful
-    if (nano.response.status == RESPONSE_IS_TAGFOUND && nano.response.nrTags > 0)
+    if (nano.response.status == RESPONSE_IS_TAGFOUND)
     {
-      // send a simple message for now
-      char *msg = "TAG FOUND\0";
-      sendToMQTT(msg);
+      if(nano.response.nrTags > 0)
+      {
+        Serial.println("Found some tags!");
+        // send EPC, Metadataflag, and raw metadata
+        uint16_t EPCLength = 12;
+        byte EPC[EPCLength];
+        uint16_t metadataLength = 64;
+        byte metadata[metadataLength];
+
+        uint16_t metadataFlag = nano.response.metadataFlag;
+        nano.response.getData(0, EPC, EPCLength, 4);
+        nano.response.getMetadata(0, metadata, metadataLength);
+
+        // construct message
+        uint8_t msgLength = 128;
+        char msg[msgLength];
+        uint8_t length = snprintf(msg, msgLength, "EPC: ");
+        length += bytesToHexString(EPC, EPCLength, msg + length);  
+        length += snprintf(msg + length, msgLength - length, ", Metadata Flag: %d, Metadata(raw): ");
+        length += bytesToHexString(metadata, metadataLength, msg + length); 
+        snprintf(msg + length, msgLength - length, "\0", EPC, metadataFlag, metadata);
+
+        sendToMQTT(msg);
+      }
     }
     else if (nano.response.status == ERROR_CORRUPT_RESPONSE)
     {
+      Serial.println("Corrupt response!");
       char *msg = "CORRUPT RESPONSE\0";
       sendToMQTT(msg);
     }
     else if (nano.response.status == RESPONSE_IS_HIGHRETURNLOSS)
     {
+      Serial.println("Reader loses data!");
       char *msg = "HIGH RETURN LOSS\0";
       sendToMQTT(msg);
     }
-    else if(nano.response.status != RESPONSE_IS_KEEPALIVE)
+    // 
+    else if(nano.response.status != RESPONSE_IS_KEEPALIVE && nano.response.status != ALL_GOOD)
     {
       char *msg = "UNKNOWN\0";
       sendToMQTT(msg);
+      Serial.println("?!???!?!");
     }
   }
 }
@@ -140,7 +164,7 @@ void connectToMQTT() {
 //Because Stream does not have a .begin() we have to do this outside the library
 boolean setupNano(long baudRate)
 {
-  nano.enableDebugging(Serial); 
+  //nano.enableDebugging(Serial); 
   nano.begin(Serial1); //Tell the library to communicate over software serial port
 
   //Test to see if we are already connected to a module

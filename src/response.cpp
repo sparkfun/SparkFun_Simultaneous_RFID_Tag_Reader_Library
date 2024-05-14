@@ -111,6 +111,7 @@ void Response::parse(uint8_t* msg, uint8_t length)
   uint16_t messageCRC = calculateCRC(&msg[1], msgLength - 3);
   if ((msg[msgLength - 2] != (messageCRC >> 8)) || (msg[msgLength - 1] != (messageCRC & 0xFF)))
   {
+    // change status
     status = (ERROR_CORRUPT_RESPONSE);
   }
 
@@ -119,13 +120,13 @@ void Response::parse(uint8_t* msg, uint8_t length)
   // status is all good
   if(status == 0x0000)
   {
-    status = RESPONSE_SUCCESS;
     // all read opcodes need to do similar actions
     if(opcode == TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE)
     {
       // exlude temperature and other messages
-      if(msg[1] != 0x00 && msg[1] != 0x08 && msg[1] != 0x0a)
+      if(msg[1] != 0x00 && msg[1] != 0x08 && msg[1] != 0x0B)
       {
+        // change status to tags found (substatus)
         status = RESPONSE_IS_TAGFOUND;
         uint8_t multiselect = msg[i++];
         uint8_t optionByte = msg[i++];
@@ -153,10 +154,6 @@ void Response::parse(uint8_t* msg, uint8_t length)
       headerLength = i;
       calculateMetadataOffsets();
     }
-  }
-  else
-  {
-    status = (RESPONSE_FAIL);
   }
 }
 
@@ -235,32 +232,35 @@ uint16_t Response::getTagPointer(uint8_t tag, uint16_t &embeddedLength, uint8_t 
 // if epclength < buflength, we change buflength
 void Response::getData(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint8_t start)
 {
-  uint16_t dataLength;
-  uint16_t dataPointer;
-  if(opcode == TMR_SR_OPCODE_READ_TAG_DATA)
-  {   
-    dataPointer = headerLength + 1;
-  }
-  else
+  if(tag < nrTags)
   {
-    uint16_t embeddedDataLength; 
-    uint8_t tagTypeLength;
-    uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
-    // data is stored at the base + length of embedded and tag type + all metadata offsets
-    dataPointer = tagPointer + metadataOffsets[TAGTYPE] + embeddedDataLength + tagTypeLength;
-  }
-  if(msgLength > dataPointer + 4 + start)
-  {
-    dataLength = msgLength - dataPointer - 4;
-    if(dataLength > bufLength)
-      dataLength = bufLength;
-    memcpy(buf, &(msg[start + dataPointer]), dataLength);
-    bufLength = dataLength;
-  }
-  // could not read any bytes
-  else
-  {
-    bufLength = 0;
+    uint16_t dataLength;
+    uint16_t dataPointer;
+    if(opcode == TMR_SR_OPCODE_READ_TAG_DATA)
+    {   
+      dataPointer = headerLength + 1;
+    }
+    else
+    {
+      uint16_t embeddedDataLength; 
+      uint8_t tagTypeLength;
+      uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
+      // data is stored at the base + length of embedded and tag type + all metadata offsets
+      dataPointer = tagPointer + metadataOffsets[TAGTYPE] + embeddedDataLength + tagTypeLength;
+    }
+    if(msgLength > dataPointer + 4 + start)
+    {
+      dataLength = msgLength - dataPointer - 4;
+      if(dataLength > bufLength)
+        dataLength = bufLength;
+      memcpy(buf, &(msg[start + dataPointer]), dataLength);
+      bufLength = dataLength;
+    }
+    // could not read any bytes
+    else
+    {
+      bufLength = 0;
+    }
   }
 }
 
@@ -279,13 +279,16 @@ void Response::getEPCdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
 // returns all metadata for a tag
 void Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint16_t &embeddedDataLength, uint8_t &tagTypeLength)
 {
-  uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
-  uint16_t length = metadataLength + embeddedDataLength + tagTypeLength;
-  // make sure it does not exceed buffer length
-  if(length > bufLength)
-    length = bufLength;
-  memcpy(buf, &(msg[tagPointer]), length);
-  bufLength = length;
+  if(tag < nrTags)
+  {
+    uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
+    uint16_t length = metadataLength + embeddedDataLength + tagTypeLength;
+    // make sure it does not exceed buffer length
+    if(length > bufLength)
+      length = bufLength;
+    memcpy(buf, &(msg[tagPointer]), length);
+    bufLength = length;
+  }
 }
 
 // Prints the metadata for tag

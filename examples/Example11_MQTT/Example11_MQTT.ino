@@ -14,7 +14,7 @@ We could also consider sending the complete tag lay out all the time
 #include <WiFiS3.h>
 #include <ArduinoMqttClient.h>
 #include <ArduinoJson.h>
-#include <mysparkfunlibrary.h>
+#include <SparkFun_UHF_RFID_Reader.h>
 
 #define WAIT_TIME_TEMP 10
 

@@ -16,7 +16,7 @@ Note that not all capabilities of the MercuryAPI are implemented in the SparkFun
 So, functionality like locking a tag requires changes to the library.
 */
 
-#include <mysparkfunlibrary.h>
+#include <SparkFun_UHF_RFID_Reader.h>
 
 RFID nano;
 

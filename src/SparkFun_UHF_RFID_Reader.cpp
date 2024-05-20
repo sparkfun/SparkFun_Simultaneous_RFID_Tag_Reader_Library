@@ -39,7 +39,7 @@
 #include "WProgram.h"
 #endif
 
-#include "mysparkfunlibrary.h"
+#include "SparkFun_UHF_RFID_Reader.h"
 
 RFID::RFID(void)
 {

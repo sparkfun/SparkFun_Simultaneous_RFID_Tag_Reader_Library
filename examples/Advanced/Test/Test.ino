@@ -16,8 +16,7 @@ used for testing
 
 SoftwareSerial softSerial(2, 3); //RX, TX
 
-//#include "SparkFun_UHF_RFID_Reader.h" //Library for controlling the M6E Nano module
-#include <mysparkfunlibrary.h>
+#include <SparkFun_UHF_RFID_Reader.h>
 
 RFID nano; //Create instance
 uint16_t total = 0;

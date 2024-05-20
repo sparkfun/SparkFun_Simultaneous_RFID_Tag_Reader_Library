@@ -126,6 +126,8 @@ void readMultipleTagIds() {
   String EPCFilter = getUserEPC();
   uint16_t EPCLength = 12;
   byte EPC[EPCLength];
+  int metadataLength = 128;
+  char metadata[metadataLength];
   // apply an EPC filter
   if(EPCFilter != "") {
     uint8_t EPCFilterLength = EPCFilter.length() / 2;
@@ -143,10 +145,11 @@ void readMultipleTagIds() {
   Serial.println(" tags!");
   for(uint8_t i = 0; i < nano.response.nrTags; i++) {
     nano.response.getEPCdata(i, EPC, EPCLength);
+    nano.response.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    nano.response.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
 }
 
@@ -167,11 +170,14 @@ void pollTags(uint8_t time) {
       }
       else if (nano.response.status == RESPONSE_IS_TAGFOUND && nano.response.nrTags > 0)
       {
+        int metadataLength = 256;
+        char metadata[metadataLength];
         nano.response.getEPCdata(0, EPC, EPCLength);
+        nano.response.metadataToJsonString(0, metadata, metadataLength);
         Serial.print(F("EPC: "));
         printBytes(EPC, EPCLength);
-        nano.response.printMetadata(0);
-        Serial.println("");
+        Serial.print("Metadata: ");
+        Serial.println(metadata);
       }
       else if (nano.response.status == ERROR_CORRUPT_RESPONSE)
       {
@@ -347,7 +353,7 @@ void loop()
 //Because Stream does not have a .begin() we have to do this outside the library
 boolean setupNano(long baudRate)
 {
-  nano.enableDebugging(Serial); 
+  //nano.enableDebugging(Serial); 
   nano.begin(Serial1); //Tell the library to communicate over software serial port
 
   //Test to see if we are already connected to a module

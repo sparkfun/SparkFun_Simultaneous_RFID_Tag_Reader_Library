@@ -1,0 +1,5 @@
+{
+    "board": "arduino:renesas_uno:unor4wifi",
+    "sketch": "examples/Example11_MQTT/Example11_MQTT.ino",
+    "port": "/dev/ttyACM0"
+}

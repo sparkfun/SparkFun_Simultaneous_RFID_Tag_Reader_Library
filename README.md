@@ -1,6 +1,20 @@
 SparkFun Simultaneous RFID Tag Reader Library
 ===========================================================
 
+Changes
+-------
+Added filter support for both reading and writing. 
+Added configurations for more specific reading adn writing operations.
+Noteable benefits:
+* Decrease overheating by setting the off-time in continuous mode
+* Write to a specific tag using a filter
+* Single multi-tag read, with or withour filter
+* Can read all tag metadata, including embedded data
+* Detailed documentation of the inner workings of the reader
+I have not tested locking, using the passwords, making tags untraceable, and some other operations.
+Use with caution!
+
+
 ![SparkFun Simultaneous RFID Tag Reader - NANO M6E](https://cdn.sparkfun.com//assets/parts/1/1/9/1/6/14066-06a.jpg)
 
 [*SparkFun Simultaneous RFID Tag Reader - NANO M6E (SEN-14066)*](https://www.sparkfun.com/products/14066)

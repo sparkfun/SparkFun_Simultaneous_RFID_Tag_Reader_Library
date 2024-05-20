@@ -2,7 +2,7 @@
 
 Response::Response()
 {
-  memset(metadataOffsets, 0, 15);
+  memset(metadataOffsets, 0, TOTAL_METADATA);
 }
 
 Response::Response(uint8_t *msg, uint8_t msgLength) 
@@ -16,88 +16,37 @@ void Response::calculateMetadataOffsets()
 {
   metadataLength = 0;
   uint8_t i = 0;
-  metadataOffsets[i++] = metadataLength; 
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, READCOUNT - 1)))
-  { 
-    metadataLength += (metadataLengths[READCOUNT]);
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, RSSI - 1)))
+  // assume that TOTAL_METADATA is at least 2
+  metadataOffsets[0] = metadataLength; 
+  metadataOffsets[1] = metadataLength; 
+  for(uint8_t x = 0; x < TOTAL_METADATA; x++)
   {
-    metadataLength += metadataLengths[RSSI];
+    if(metadataFlag & unsigned(pow(2, x - 1)))
+    { 
+      metadataLength += (metadataLengths[x]);
+    }    
+    metadataOffsets[x] = metadataLength; 
   }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, ANTENNAID - 1)))
-  {
-    metadataLength += metadataLengths[ANTENNAID];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, FREQUENCY - 1)))
-  {
-    metadataLength += metadataLengths[FREQUENCY];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, TIMESTAMP - 1)))
-  {
-    metadataLength += metadataLengths[TIMESTAMP];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, PHASE - 1)))
-  {
-    metadataLength += metadataLengths[PHASE];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, PROTOCOL - 1)))
-  {
-    metadataLength += metadataLengths[PROTOCOL];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  // note: more like datalength
-  if(metadataFlag & unsigned(pow(2, DATA - 1)))
-  {
-    metadataLength += metadataLengths[DATA];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, GPIO_STATUS - 1)))
-  {
-    metadataLength += metadataLengths[GPIO_STATUS];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, GEN2_Q - 1)))
-  {
-    metadataLength += metadataLengths[GEN2_Q];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, GEN2_LF - 1)))
-  {
-    metadataLength += metadataLengths[GEN2_LF];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, GEN2_TARGET - 1)))
-  {
-    metadataLength += metadataLengths[GEN2_TARGET];
-  }
-  metadataOffsets[i++] = metadataLength; 
-  if(metadataFlag & unsigned(pow(2, BRAND_IDENTIFIER - 1)))
-  {
-    metadataLength += metadataLengths[BRAND_IDENTIFIER];
-  } 
-  metadataOffsets[i++] = metadataLength; 
+}
+
+// resets the object
+void Response::reset()
+{
+  headerLength = 0;
+  metadataLength = 0;
+  memset(metadataOffsets, 0, TOTAL_METADATA);
+  nrTags = 0;
+  metadataFlag = 0;
+  opcode = 0;
+  status = 0;
+  temperature = 0;
 }
 
 // parses the header and puts it in the response
 // also calculates metadata offsets and length
 void Response::parse(uint8_t* msg, uint8_t length) 
 {
-  // reset object
-  headerLength = 0;
-  metadataLength = 0;
-  memset(metadataOffsets, 0, 15);
-  nrTags = 0;
-  metadataFlag = 0;
-  opcode = 0;
-  status = 0;
+  reset(); // reset object
   // set new message
   msgLength = length;
   length = length > 512 ? 512 : length;
@@ -123,8 +72,14 @@ void Response::parse(uint8_t* msg, uint8_t length)
     // all read opcodes need to do similar actions
     if(opcode == TMR_SR_OPCODE_READ_TAG_ID_MULTIPLE)
     {
-      // exlude temperature and other messages
-      if(msg[1] != 0x00 && msg[1] != 0x08 && msg[1] != 0x0B)
+      // temperature message
+      if(msg[1] == 0x0B)
+      {
+        temperature = msg[15]; 
+        status = RESPONSE_IS_TEMPERATURE;
+      }
+      // exlude other messages
+      else if(msg[1] != 0x00 && msg[1] != 0x08)
       {
         // change status to tags found (substatus)
         status = RESPONSE_IS_TAGFOUND;
@@ -158,12 +113,13 @@ void Response::parse(uint8_t* msg, uint8_t length)
 }
 
 
-// merge the two data fields into one
+// merge the two data fields into one (untested...)
 Response& Response::operator+(const Response &other)
 {
   // only if there is data of the same sort
   if(other.nrTags > 0 && 
     other.opcode == this->opcode && 
+    other.headerLength == this->headerLength &&
     other.status == this->status && 
     other.metadataFlag == this->metadataFlag &&
     other.msgLength + this->msgLength < 512)
@@ -293,86 +249,40 @@ void Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
   }
 }
 
-// Prints the metadata for tag
-// Could not think of an easier way...
-void Response::printMetadata(uint8_t tag)
+// Converts metadata for tag into a json string by using the metadataFlag
+uint16_t Response::metadataToJsonString(uint8_t tag, char *buf, int bufLength)
 {
-  uint16_t embeddedDataLength;
-  uint8_t tagTypeLength;
-  uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
-  if(metadataFlag & unsigned(pow(2, READCOUNT - 1)))
+  if(tag < nrTags)
   {
-    Serial.print("Readcount: ");
-    Serial.println(msg[tagPointer++]);
+    int length = 0;
+    uint16_t embeddedDataLength;
+    uint8_t tagTypeLength;
+    uint16_t tagPointer = getTagPointer(tag, embeddedDataLength, tagTypeLength);
+    length += snprintf(buf + length, bufLength - length, "{");
+    for(uint8_t i = 1; i < TOTAL_METADATA; i++) 
+    {
+      // check if bit is on
+      if(metadataFlag & unsigned(pow(2, i - 1)))
+      {
+        length += snprintf(buf + length, bufLength - length, "\"%s\": ", metadataLabels[i]);
+        length += bytesToHexString(&(msg[tagPointer]), metadataLengths[i], buf + length, bufLength - length);  
+        tagPointer += metadataLengths[i];
+        length += snprintf(buf + length, bufLength - length, ", ");
+        if(i == DATA)
+        {
+          length += snprintf(buf + length, bufLength - length, "\"Embedded Data\": ");
+          length += bytesToHexString(&(msg[tagPointer]), embeddedDataLength, buf + length, bufLength - length);  
+          tagPointer += embeddedDataLength;
+          length += snprintf(buf + length, bufLength - length, ", ");
+        }
+        if(i == TAGTYPE)
+        {
+          // TODO
+        }
+      }
+    }
+    length += snprintf(buf + length, bufLength - length, "}");
+    return length;
   }
-  if(metadataFlag & unsigned(pow(2, RSSI - 1)))
-  {
-    Serial.print("RSSI: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, ANTENNAID - 1)))
-  {
-    Serial.print("Antenna ID: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, FREQUENCY - 1)))
-  {
-    Serial.print("Frequency: ");
-    Serial.println(msg[tagPointer++] << 16 | msg[tagPointer++] << 8 | msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, TIMESTAMP - 1)))
-  {
-    Serial.print("Timestamp: ");
-    Serial.println(msg[tagPointer++] << 24 | msg[tagPointer++] << 16 | msg[tagPointer++] << 8 | msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, PHASE - 1)))
-  {
-    Serial.print("Phase: ");
-    Serial.println(msg[tagPointer++] << 8 | msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, PROTOCOL - 1)))
-  {
-    Serial.print("Protocol: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  // note: more like datalength
-  if(metadataFlag & unsigned(pow(2, DATA - 1)))
-  {
-    Serial.print("Embedded Data Length: ");
-    Serial.println(embeddedDataLength);
-    tagPointer += 2;
-    Serial.print("Embedded Data:");
-    printBytes(&(msg[tagPointer]), embeddedDataLength);
-    tagPointer += embeddedDataLength;
-  }
-  if(metadataFlag & unsigned(pow(2, GPIO_STATUS - 1)))
-  {
-    Serial.print("GPIO: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, GEN2_Q - 1)))
-  {
-    Serial.print("Gen2 Q: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, GEN2_LF - 1)))
-  {
-    Serial.print("Gen2 LF: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, GEN2_TARGET - 1)))
-  {
-    Serial.print("Gen2 Target: ");
-    Serial.println(msg[tagPointer++]);
-  }
-  if(metadataFlag & unsigned(pow(2, BRAND_IDENTIFIER - 1)))
-  {
-    Serial.print("Brand Identifier: ");
-    Serial.println(msg[tagPointer++] << 8 | msg[tagPointer++]);
-  } 
-  if(metadataFlag & unsigned(pow(2, TAGTYPE - 1)))
-  {
-    Serial.print("Tag Type: ");
-    printBytes(&(msg[tagPointer]), tagTypeLength);
-  } 
+  return 0;
 }

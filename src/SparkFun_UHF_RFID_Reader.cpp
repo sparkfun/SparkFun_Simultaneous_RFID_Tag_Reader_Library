@@ -994,7 +994,7 @@ bool RFID::check()
           _debugSerial->print(F("response: "));
           printMessageArray();
         }
-        response.parse(msg, sizeof(msg));
+        response.parse(msg, sizeof(msg)); // parse the response
 
         return (true);
       }

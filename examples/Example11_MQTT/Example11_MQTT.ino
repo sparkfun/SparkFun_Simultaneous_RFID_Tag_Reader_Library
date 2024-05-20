@@ -16,6 +16,7 @@ We could also consider sending the complete tag lay out all the time
 #include <ArduinoJson.h>
 #include <mysparkfunlibrary.h>
 
+#define WAIT_TIME_TEMP 10
 
 // WiFi credentials
 const char WIFI_SSID[] = "SupplyLab";   
@@ -37,6 +38,8 @@ MqttClient mqttClient(wifiClient);
 
 // rfid reader object
 RFID nano;
+unsigned long end;
+unsigned long start = millis();
 
 void setup() {
   Serial.begin(115200);
@@ -82,56 +85,75 @@ void loop() {
     {
       if(nano.response.nrTags > 0)
       {
+        StaticJsonDocument<200> message;
+        StaticJsonDocument<150> metadata;
         Serial.println("Found some tags!");
         // send EPC, Metadataflag, and raw metadata
         uint16_t EPCLength = 12;
         byte EPC[EPCLength];
-        uint16_t metadataLength = 64;
-        byte metadata[metadataLength];
 
         uint16_t metadataFlag = nano.response.metadataFlag;
         nano.response.getData(0, EPC, EPCLength, 4);
-        nano.response.getMetadata(0, metadata, metadataLength);
 
         // construct message
-        uint8_t msgLength = 128;
+        int msgLength = 128;
         char msg[msgLength];
-        uint8_t length = snprintf(msg, msgLength, "EPC: ");
-        length += bytesToHexString(EPC, EPCLength, msg + length);  
-        length += snprintf(msg + length, msgLength - length, ", Metadata Flag: %d, Metadata(raw): ");
-        length += bytesToHexString(metadata, metadataLength, msg + length); 
-        snprintf(msg + length, msgLength - length, "\0", EPC, metadataFlag, metadata);
+        bytesToHexString(EPC, EPCLength, msg, msgLength); 
+        message["EPC"] = msg;
+        message["Metadata Flag"] = nano.response.metadataFlag;
+        nano.response.metadataToJsonString(0, msg, msgLength);
+        deserializeJson(metadata, msg);
+        message["Metadata"] = metadata;
 
-        sendToMQTT(msg);
+        sendJSONToMQTT(message);
+      }
+    }
+    else if(nano.response.status == RESPONSE_IS_TEMPERATURE)
+    {
+      end = millis();
+      if((end - start) / 1000 > WAIT_TIME_TEMP)
+      {
+        StaticJsonDocument<200> message;
+        // convert to string and send
+        char tmp[3];
+        sprintf(tmp, "%d", nano.response.temperature);
+        message["type"] = 1;
+        message["temperature"] = tmp;
+        sendJSONToMQTT(message);
+        start = end;
       }
     }
     else if (nano.response.status == ERROR_CORRUPT_RESPONSE)
     {
       Serial.println("Corrupt response!");
-      char *msg = "CORRUPT RESPONSE\0";
-      sendToMQTT(msg);
+      sendToMQTT(2, "CORRUPT RESPONSE");
     }
     else if (nano.response.status == RESPONSE_IS_HIGHRETURNLOSS)
     {
       Serial.println("Reader loses data!");
-      char *msg = "HIGH RETURN LOSS\0";
-      sendToMQTT(msg);
+      sendToMQTT(3, "HIGH RETURN LOSS");
     }
     // 
     else if(nano.response.status != RESPONSE_IS_KEEPALIVE && nano.response.status != ALL_GOOD)
     {
-      char *msg = "UNKNOWN\0";
-      sendToMQTT(msg);
       Serial.println("?!???!?!");
+      sendToMQTT(4, "UNKNOWN");
     }
   }
 }
 
+void sendToMQTT(uint8_t type, char *msg)
+{
+  StaticJsonDocument<200> data;
+  data["type"] = type;
+  data["message"] = msg;
+  sendJSONToMQTT(data);
+}
 
-void sendToMQTT(char *msg) {
+void sendJSONToMQTT(StaticJsonDocument<200> data) {
   StaticJsonDocument<300> message;
   message["timestamp"] = millis();
-  message["data"] = msg;
+  message["data"] = data;
   char messageBuffer[512];
   serializeJson(message, messageBuffer);
 

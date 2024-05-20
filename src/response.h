@@ -48,27 +48,33 @@
 // Metadata must match tmr_tag_data.h! 
 enum MetadataId
 {
-  NONE = 0,
-  READCOUNT = 1,
-  RSSI = 2,
-  ANTENNAID = 3,
-  FREQUENCY = 4,
-  TIMESTAMP = 5,
-  PHASE = 6,
-  PROTOCOL = 7,
-  DATA = 8,
-  GPIO_STATUS = 9,
-  GEN2_Q = 10,
-  GEN2_LF = 11,
-  GEN2_TARGET = 12,
-  BRAND_IDENTIFIER = 13,
-  TAGTYPE = 14,
+  NONE,
+  READCOUNT,
+  RSSI,
+  ANTENNAID,
+  FREQUENCY,
+  TIMESTAMP,
+  PHASE,
+  PROTOCOL,
+  DATA,
+  GPIO_STATUS,
+  GEN2_Q,
+  GEN2_LF,
+  GEN2_TARGET,
+  BRAND_IDENTIFIER,
+  TAGTYPE,
+  TOTAL_METADATA,
 };
 
+// labels for printing, make sure they match with MetadataId and metadataLengths
+static char *metadataLabels[] = {"", "Readcount", "RSSI", "Antenna ID", "Frequency", 
+                                "Timestamp", "Phase", "Protocol", "Embedded Data Length", "GPIO Status",
+                                "Gen2 Q", "Gen2 LF", "Gen2 Target", "Brand Identifier", "Tag Type"};
+
 // only for the elements with a fixed size (embedded data and tag type are dynamic)
-static uint8_t metadataLengths[] = {0, 1, 1, 1, 3,
-                                    4, 2, 1, 2, 1, 
-                                    1, 1, 1, 2, 0};
+static uint8_t metadataLengths[TOTAL_METADATA] = {0, 1, 1, 1, 3,
+                                                  4, 2, 1, 2, 1, 
+                                                  1, 1, 1, 2, 0};
 
 #define TMR_SR_OPCODE_VERSION 0x03
 #define TMR_SR_OPCODE_SET_BAUD_RATE 0x06
@@ -159,9 +165,10 @@ class Response
     uint8_t opcode = 0; // opcode
     uint16_t metadataFlag = 0; // metadata flag
     uint8_t nrTags = 0; // the number of items contained in this repsonse
-    uint8_t metadataOffsets[15]; // store 14 offsets
+    uint8_t metadataOffsets[TOTAL_METADATA]; // store 15 offsets
     uint8_t metadataLength = 0;
     uint8_t headerLength = 0;
+    uint8_t temperature = 0;
 
     // constructors
     Response();
@@ -170,6 +177,7 @@ class Response
     // overloaded + operator so we can add responses together
     Response& operator+(const Response &other);
     
+    void reset();
     void parse(uint8_t* msg, uint8_t msgLength);
  
     uint16_t getTagPointer(uint8_t tag, uint16_t &embeddedLength, uint8_t &tagTypeLength);
@@ -177,18 +185,7 @@ class Response
     void getBankdata(uint8_t item, uint8_t *buf, uint16_t &bufLength);
     void getEPCdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength);
     void getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength);
-    void printMetadata(uint8_t tag);
-
-    // prints bytes in a nice hex format
-    static void printBytes(uint8_t *bytes, uint8_t len)
-    {
-      for (uint8_t x = 0 ; x < len ; x++)
-      {
-        if (bytes[x] < 16) {Serial.print("0");}
-          Serial.print(bytes[x], HEX);
-      } 
-      Serial.println("");
-    }
+    uint16_t metadataToJsonString(uint8_t tag, char *buf, int bufLength);
 
   private:
     void calculateMetadataOffsets();
@@ -233,3 +230,28 @@ static uint16_t calculateCRC(uint8_t *u8Buf, uint8_t len)
 
   return crc;
 }
+
+// converts an array of bytes to a hex string, not exceeding charsLength
+// using new or malloc is possible, but arduino does not really like dynamic memory
+// returns the numbers of characters written
+static uint8_t bytesToHexString(uint8_t *bytes, uint8_t len, char *chars, int charsLength)
+{
+  uint8_t length = 0;
+  for (uint8_t x = 0 ; x < len ; x++)
+  {
+    length += snprintf(chars + length, charsLength, "%02x", bytes[x]);
+  } 
+  length += snprintf(chars + length, charsLength, "\0");
+  return length;
+}
+
+// prints a byte array
+static void printBytes(uint8_t *bytes, uint8_t len)
+{
+  for (uint8_t x = 0 ; x < len ; x++)
+  {
+    if (bytes[x] < 16) {Serial.print("0");}
+      Serial.print(bytes[x], HEX);
+  } 
+  Serial.println("");
+} 

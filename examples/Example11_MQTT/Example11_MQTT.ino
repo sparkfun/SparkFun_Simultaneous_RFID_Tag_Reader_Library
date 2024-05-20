@@ -59,7 +59,7 @@ void setup() {
   connectToMQTT();
 
   // setup RFID reader
-  if (setupNano(38400) == false) //Configure nano to run at 38400bps
+  if (setupNano(115200) == false) //Configure nano to run at 115200
   {
     Serial.println(F("Module failed to respond. Please check wiring."));
     while (1); //Freeze!
@@ -114,11 +114,8 @@ void loop() {
       if((end - start) / 1000 > WAIT_TIME_TEMP)
       {
         StaticJsonDocument<200> message;
-        // convert to string and send
-        char tmp[3];
-        sprintf(tmp, "%d", nano.response.temperature);
         message["type"] = 1;
-        message["temperature"] = tmp;
+        message["temperature"] = nano.response.temperature;
         sendJSONToMQTT(message);
         start = end;
       }

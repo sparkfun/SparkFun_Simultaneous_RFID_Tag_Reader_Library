@@ -19,11 +19,12 @@ void Response::calculateMetadataOffsets()
   // assume that TOTAL_METADATA is at least 2
   metadataOffsets[0] = metadataLength; 
   metadataOffsets[1] = metadataLength; 
-  for(uint8_t x = 0; x < TOTAL_METADATA; x++)
+  for(uint8_t x = 2; x < TOTAL_METADATA; x++)
   {
-    if(metadataFlag & unsigned(pow(2, x - 1)))
+    // check if previous metadata was included
+    if(metadataFlag & unsigned(pow(2, x - 2)))
     { 
-      metadataLength += (metadataLengths[x]);
+      metadataLength += (metadataLengths[x - 1]);
     }    
     metadataOffsets[x] = metadataLength; 
   }
@@ -153,6 +154,8 @@ uint16_t Response::getTagPointer(uint8_t tag, uint16_t &embeddedLength, uint8_t 
       // these fields have a variable length
       if(unsigned(pow(2, DATA - 1)) & metadataFlag)
       {
+        Serial.println(tagPointer);
+        Serial.println(metadataOffsets[DATA]);
         embeddedDataLength = msg[tagPointer + metadataOffsets[DATA]] << 8 | msg[tagPointer + metadataOffsets[DATA] + 1]; 
         embeddedDataLength = embeddedDataLength > 0 ? ((embeddedDataLength - 1) >> 3) + 1 : 0; // convert to bytes
         offset += embeddedDataLength;
@@ -172,6 +175,8 @@ uint16_t Response::getTagPointer(uint8_t tag, uint16_t &embeddedLength, uint8_t 
     // we have determined the start of the tag, now we need to determine the size of embedded data and tag type
     if(unsigned(pow(2, DATA - 1)) & metadataFlag)
     {
+      Serial.println(tagPointer);
+      Serial.println(metadataOffsets[DATA]);
       embeddedLength = msg[tagPointer + metadataOffsets[DATA]] << 8 | msg[tagPointer + metadataOffsets[DATA] + 1]; 
       embeddedLength = embeddedLength > 0 ? ((embeddedLength - 1) >> 3) + 1 : 0; // convert to bytes
     }
@@ -186,7 +191,7 @@ uint16_t Response::getTagPointer(uint8_t tag, uint16_t &embeddedLength, uint8_t 
 
 // we assume the bufLength is set to the buffer size
 // if epclength < buflength, we change buflength
-void Response::getData(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint8_t start)
+uint16_t Response::getData(uint8_t tag, uint8_t *buf, uint16_t bufLength, uint8_t start)
 {
   if(tag < nrTags)
   {
@@ -210,30 +215,26 @@ void Response::getData(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint8_t s
       if(dataLength > bufLength)
         dataLength = bufLength;
       memcpy(buf, &(msg[start + dataPointer]), dataLength);
-      bufLength = dataLength;
-    }
-    // could not read any bytes
-    else
-    {
-      bufLength = 0;
+      return dataLength;
     }
   }
+  return 0;
 }
 
 // helper function that returns from start addres 2 (default includes length)
-void Response::getBankdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
+uint16_t Response::getBankdata(uint8_t tag, uint8_t *buf, uint16_t bufLength)
 {
-  getData(tag, buf, bufLength, 0);
+  return getData(tag, buf, bufLength, 0);
 }
 
 // helper function that returns from start addres 4
-void Response::getEPCdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
+uint16_t Response::getEPCdata(uint8_t tag, uint8_t *buf, uint16_t bufLength)
 {
-  getData(tag, buf, bufLength, 4);
+  return getData(tag, buf, bufLength, 4);
 }
 
 // returns all metadata for a tag
-void Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
+uint16_t Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t bufLength)
 {
   if(tag < nrTags)
   {
@@ -245,8 +246,9 @@ void Response::getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength)
     if(length > bufLength)
       length = bufLength;
     memcpy(buf, &(msg[tagPointer]), length);
-    bufLength = length;
+    return length;
   }
+  return 0;
 }
 
 // Converts metadata for tag into a json string by using the metadataFlag
@@ -264,20 +266,25 @@ uint16_t Response::metadataToJsonString(uint8_t tag, char *buf, int bufLength)
       // check if bit is on
       if(metadataFlag & unsigned(pow(2, i - 1)))
       {
-        length += snprintf(buf + length, bufLength - length, "\"%s\": ", metadataLabels[i]);
+        length += snprintf(buf + length, bufLength - length, "\"%s\": \"", metadataLabels[i]);
         length += bytesToHexString(&(msg[tagPointer]), metadataLengths[i], buf + length, bufLength - length);  
         tagPointer += metadataLengths[i];
-        length += snprintf(buf + length, bufLength - length, ", ");
+        length += snprintf(buf + length, bufLength - length, "\"");
         if(i == DATA)
         {
-          length += snprintf(buf + length, bufLength - length, "\"Embedded Data\": ");
+          length += snprintf(buf + length, bufLength - length, ", \"Embedded Data(%d)\": \"", embeddedDataLength);
           length += bytesToHexString(&(msg[tagPointer]), embeddedDataLength, buf + length, bufLength - length);  
           tagPointer += embeddedDataLength;
-          length += snprintf(buf + length, bufLength - length, ", ");
+          length += snprintf(buf + length, bufLength - length, "\"");
         }
         if(i == TAGTYPE)
         {
           // TODO
+        }
+        // add comma
+        if(i < (TOTAL_METADATA - 1))
+        {
+          length += snprintf(buf + length, bufLength - length, ", ");
         }
       }
     }

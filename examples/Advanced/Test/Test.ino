@@ -10,11 +10,9 @@ used for testing
 
 //Used for transmitting to the device
 //If you run into compilation errors regarding this include, see the README
-#include <SoftwareSerial.h>
 #include <MemoryFree.h>
 #include <pgmStrToRAM.h>
 
-SoftwareSerial softSerial(2, 3); //RX, TX
 
 #include <SparkFun_UHF_RFID_Reader.h>
 
@@ -108,6 +106,9 @@ void loop()
   while (!Serial.available());
   int option = Serial.parseInt();
 
+  // metadata buffer
+  int metadataLength = 256;
+  char metadata[metadataLength];
   // test filters
   byte data[255];
   ReadConfig config;
@@ -407,12 +408,13 @@ void loop()
   Response r(data29_1, sizeof(data29_1));
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -474,12 +476,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -569,12 +572,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -601,12 +605,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -631,12 +636,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -661,12 +667,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -709,12 +716,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -737,12 +745,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -783,12 +792,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -825,12 +835,12 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
-    printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;
@@ -848,12 +858,13 @@ void loop()
   Serial.println(r.status);
   for(uint8_t i = 0; i < r.nrTags; i++)
   {
-    r.getMetadata(i, myData, myDataLength, embeddedDataLength, tagTypeLength);
+    r.getMetadata(i, myData, myDataLength);
     r.getData(i, EPC, EPCLength, 4);
+    r.metadataToJsonString(i, metadata, metadataLength);
     Serial.print(F("EPC: "));
     printBytes(EPC, EPCLength);
-    r.printMetadata(i);
-    Serial.println("");
+    Serial.print("Metadata: ");
+    Serial.println(metadata);
   }
   EPCLength = 16;
   myDataLength = 64;

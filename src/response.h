@@ -181,10 +181,10 @@ class Response
     void parse(uint8_t* msg, uint8_t msgLength);
  
     uint16_t getTagPointer(uint8_t tag, uint16_t &embeddedLength, uint8_t &tagTypeLength);
-    void getData(uint8_t tag, uint8_t *buf, uint16_t &bufLength, uint8_t start);
-    void getBankdata(uint8_t item, uint8_t *buf, uint16_t &bufLength);
-    void getEPCdata(uint8_t tag, uint8_t *buf, uint16_t &bufLength);
-    void getMetadata(uint8_t tag, uint8_t *buf, uint16_t &bufLength);
+    uint16_t getData(uint8_t tag, uint8_t *buf, uint16_t bufLength, uint8_t start);
+    uint16_t getBankdata(uint8_t item, uint8_t *buf, uint16_t bufLength);
+    uint16_t getEPCdata(uint8_t tag, uint8_t *buf, uint16_t bufLength);
+    uint16_t getMetadata(uint8_t tag, uint8_t *buf, uint16_t bufLength);
     uint16_t metadataToJsonString(uint8_t tag, char *buf, int bufLength);
 
   private:

@@ -66,13 +66,13 @@ void setup() {
   }
 
   nano.setRegion(REGION_AUSTRALIA); // Set to North America
-  nano.setReadPower(1800); // 15.00 dBm. Higher values may caues USB port to brown out
+  nano.setReadPower(2500); // 15.00 dBm. Higher values may caues USB port to brown out
   //Max Read TX Power is 27.00 dBm and may cause temperature-limit throttling
 
   // set offtime to 500, so we have a 66.67% utilization
   ReadConfig config = nano.initStandardContinuousReadConfig();
   TagFilter filter;
-  config.offtime = 500;
+  config.offtime = 0;
   nano.startReadingWithFilterConfig(config, filter); //Begin scanning for tags
 }
 
@@ -208,6 +208,7 @@ boolean setupNano(long baudRate)
     Serial1.begin(115200); //Start software serial at 115200
     nano.setBaud(baudRate); //Tell the module to go to the chosen baud rate. Ignore the response msg
     Serial1.begin(baudRate); //Start the software serial port, this time at user's chosen baud rate
+    delay(250);
   }
 
   //Test the connection

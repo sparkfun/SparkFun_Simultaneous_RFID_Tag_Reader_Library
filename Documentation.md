@@ -483,8 +483,7 @@ Line 10 enables "secure read access", don't know what that is (question 1).
 If there is no password or filter, it sets option to 0x00(SELECT_DISABLED).
 The filter content is different based on the type:
 
-> [!NOTE]- Code Snippet
-> ```cpp
+```cpp
 typedef enum TMR_FilterType  
 {  
   /** Tag data filter - non-protocol-specific */  
@@ -499,7 +498,8 @@ typedef enum TMR_FilterType
   TMR_FILTER_TYPE_TAGTYPE_SELECT = 2,  
   /** Multi select filter */  
   TMR_FILTER_TYPE_MULTI = 3  
-} TMR_FilterType;  
+} TMR_FilterType;
+```
 
 There are a lot of if statements and different types of filters.
 We made an attempt to parse the communication protocol.
